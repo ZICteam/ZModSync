@@ -85,8 +85,7 @@ public final class DownloadManager {
                         LoggerUtils.info("Download queue complete");
                     }
                     if (failed.get()) {
-                        SyncIssueState.set("Download step failed for " + failedDownloads.get()
-                                + " file(s). Check the log panel for details.");
+                        SyncIssueState.set(buildDownloadBatchFailureMessage(failedDownloads.get()));
                     }
                     if (restartRequired.get()) {
                         RestartState.markRestartRequired();
@@ -125,8 +124,7 @@ public final class DownloadManager {
                         + task.getEntry().getRelativePath() + ": " + describeException(exception));
             }
         }
-        SyncIssueState.set("Failed to download " + task.getEntry().getRelativePath() + ": "
-                + describeException(lastFailure));
+        SyncIssueState.set(buildSingleDownloadFailureMessage(task.getEntry().getRelativePath(), lastFailure));
         return false;
     }
 
@@ -187,7 +185,15 @@ public final class DownloadManager {
         }
     }
 
-    private static String describeException(Exception exception) {
+    static String buildDownloadBatchFailureMessage(int failedDownloads) {
+        return "Download step failed for " + failedDownloads + " file(s). Check the log panel for details.";
+    }
+
+    static String buildSingleDownloadFailureMessage(String relativePath, Exception exception) {
+        return "Failed to download " + relativePath + ": " + describeException(exception);
+    }
+
+    static String describeException(Exception exception) {
         if (exception == null) {
             return "unknown error";
         }

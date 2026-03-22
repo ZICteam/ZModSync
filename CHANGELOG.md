@@ -7,6 +7,36 @@ The format is intentionally simple:
 - Every repository change must add a matching changelog entry.
 - Documentation must be updated in the same change whenever behavior, setup, or usage changes.
 
+## [1.0.16] - 2026-03-22
+
+### Changed
+- Added automated tests for download-flow error messaging and friendly exception formatting.
+- Expanded the next-step roadmap item for download-flow test coverage.
+
+## [1.0.15] - 2026-03-22
+
+### Changed
+- Added automated tests for cleanup decision logic, covering preserved, protected, modified, and deletable file cases.
+- Expanded the next-step roadmap item for cleanup/download-related test coverage.
+
+## [1.0.14] - 2026-03-22
+
+### Changed
+- Extended CI so successful GitHub Actions builds upload the generated mod jar as an artifact.
+- Added a follow-up roadmap section for the next phase after the baseline stabilization work.
+
+## [1.0.13] - 2026-03-22
+
+### Changed
+- Added an operations guide for administrators covering release, rollback, and troubleshooting workflows.
+- Updated documentation indexes and roadmap status for the admin operations package.
+
+## [1.0.12] - 2026-03-22
+
+### Changed
+- Expanded server documentation with practical deployment layouts and reverse proxy examples.
+- Added clearer setup guidance for direct HTTP exposure versus proxy-based delivery.
+
 ## [1.0.11] - 2026-03-22
 
 ### Changed

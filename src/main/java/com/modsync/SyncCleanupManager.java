@@ -34,19 +34,17 @@ public final class SyncCleanupManager {
         int skippedCount = 0;
 
         for (ManifestEntry previousEntry : previousEntries) {
-            if (currentEntries.containsKey(previousEntry.getIdentityKey())) {
+            CleanupAction action = decideCleanupAction(previousEntry, currentEntries, localEntryMap);
+            if (action == CleanupAction.KEEP_PRESENT) {
                 continue;
             }
-
-            if (shouldProtectFromCleanup(previousEntry)) {
+            if (action == CleanupAction.SKIP_PROTECTED) {
                 skippedCount++;
                 LoggerUtils.warn("Skipped cleanup for protected file: " + previousEntry.getCategory().name()
                         + " / " + previousEntry.getRelativePath());
                 continue;
             }
-
-            ManifestEntry localEntry = localEntryMap.get(previousEntry.getIdentityKey());
-            if (localEntry != null && !matchesManagedVersion(localEntry, previousEntry)) {
+            if (action == CleanupAction.SKIP_MODIFIED) {
                 skippedCount++;
                 LoggerUtils.warn("Skipped cleanup for locally modified managed file: "
                         + previousEntry.getCategory().name() + " / " + previousEntry.getRelativePath());
@@ -87,6 +85,25 @@ public final class SyncCleanupManager {
         ManagedStateStore.save(serverId, manifestData.getEntries());
     }
 
+    static CleanupAction decideCleanupAction(ManifestEntry previousEntry,
+                                             Map<String, ManifestEntry> currentEntries,
+                                             Map<String, ManifestEntry> localEntryMap) {
+        if (previousEntry == null) {
+            return CleanupAction.KEEP_PRESENT;
+        }
+        if (currentEntries.containsKey(previousEntry.getIdentityKey())) {
+            return CleanupAction.KEEP_PRESENT;
+        }
+        if (shouldProtectFromCleanup(previousEntry)) {
+            return CleanupAction.SKIP_PROTECTED;
+        }
+        ManifestEntry localEntry = localEntryMap.get(previousEntry.getIdentityKey());
+        if (localEntry != null && !matchesManagedVersion(localEntry, previousEntry)) {
+            return CleanupAction.SKIP_MODIFIED;
+        }
+        return CleanupAction.DELETE;
+    }
+
     private static void deleteEmptyParents(Path root, Path start) throws IOException {
         Path normalizedRoot = root.normalize();
         Path current = start;
@@ -109,5 +126,12 @@ public final class SyncCleanupManager {
     private static boolean matchesManagedVersion(ManifestEntry localEntry, ManifestEntry previousEntry) {
         return localEntry.getFileSize() == previousEntry.getFileSize()
                 && localEntry.getSha256().equalsIgnoreCase(previousEntry.getSha256());
+    }
+
+    enum CleanupAction {
+        KEEP_PRESENT,
+        SKIP_PROTECTED,
+        SKIP_MODIFIED,
+        DELETE
     }
 }

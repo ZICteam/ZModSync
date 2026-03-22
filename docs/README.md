@@ -1,6 +1,6 @@
 # ModSync Docs
 
-Текущая версия мода: `1.0.11`
+Текущая версия мода: `1.0.16`
 
 История изменений:
 - [../CHANGELOG.md](../CHANGELOG.md)
@@ -24,6 +24,9 @@
 
 - [Smoke_Checklist_RU.md](Z:\My_mods\mods\docs\Smoke_Checklist_RU.md)
   - краткий чеклист ручной проверки после изменений
+
+- [Operations_Guide_RU.md](Z:\My_mods\mods\docs\Operations_Guide_RU.md)
+  - эксплуатационные инструкции для администраторов
 
 ## Как использовать
 

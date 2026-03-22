@@ -2,7 +2,7 @@
 
 ModSync is a universal Forge 1.20.1 mod that lets a server distribute mods and resource files to connecting clients while Minecraft is running.
 
-Current mod version: `1.0.11`
+Current mod version: `1.0.16`
 
 ## Requirements
 
@@ -22,6 +22,8 @@ The built universal jar is created under `build/libs/`.
 
 The repository includes a GitHub Actions workflow that runs `./gradlew build` on pushes and pull requests.
 Minimal automated tests are available through `./gradlew test`.
+Successful CI runs also upload the built jar from `build/libs/` as a workflow artifact.
+Test coverage now includes cleanup decision cases and download-flow error messaging in addition to path safety, manifest JSON, and file comparison.
 
 ## Server Repository Layout
 
@@ -85,6 +87,7 @@ The proxy must forward these paths to the internal ModSync HTTP server:
 
 If `public_http_base_url` is empty, ModSync falls back to direct links using `server_http_port`.
 When `public_http_base_url` is set, ModSync now uses it consistently for generated download links in both manifest delivery paths.
+Detailed deployment examples are documented in `docs/Server_Setup_RU.md`.
 
 ## Notes
 
@@ -106,6 +109,7 @@ When `public_http_base_url` is set, ModSync now uses it consistently for generat
 - `docs/ModSync_FAQ_Discord.md`
 - `docs/Roadmap_RU.md`
 - `docs/Smoke_Checklist_RU.md`
+- `docs/Operations_Guide_RU.md`
 - `CHANGELOG.md`
 
 ## Release Process
