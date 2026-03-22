@@ -178,7 +178,7 @@ public class ModSyncMultiplayerScreen extends Screen {
             return;
         }
         ServerSyncStatusCache.markDirty(entry.serverData);
-        PreJoinSyncManager.startForServer(entry.serverData, this);
+        PreJoinSyncManager.startForServer(entry.serverData, this, true);
     }
 
     private void downloadSelected() {
@@ -187,7 +187,7 @@ public class ModSyncMultiplayerScreen extends Screen {
             return;
         }
         ServerSyncStatusCache.markDirty(entry.serverData);
-        PreJoinSyncManager.startForServer(entry.serverData, this);
+        PreJoinSyncManager.startForServer(entry.serverData, this, false);
     }
 
     private void addServer() {
@@ -207,7 +207,7 @@ public class ModSyncMultiplayerScreen extends Screen {
         minecraft.setScreen(new DirectJoinServerScreen(this, accepted -> {
             if (accepted) {
                 ServerSyncStatusCache.markDirty(serverData);
-                PreJoinSyncManager.startForServer(serverData, this);
+                PreJoinSyncManager.startForServer(serverData, this, true);
             } else {
                 minecraft.setScreen(this);
             }

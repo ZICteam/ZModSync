@@ -2,6 +2,7 @@ package com.modsync;
 
 public final class ClientSyncContext {
     private static volatile String currentServerId = "";
+    private static volatile String preJoinReadyServerId = "";
 
     private ClientSyncContext() {
     }
@@ -14,7 +15,21 @@ public final class ClientSyncContext {
         return currentServerId;
     }
 
+    public static void markPreJoinReady(String serverId) {
+        preJoinReadyServerId = serverId == null ? "" : serverId.trim();
+    }
+
+    public static boolean consumePreJoinReady(String serverId) {
+        String normalized = serverId == null ? "" : serverId.trim();
+        if (!normalized.isEmpty() && normalized.equals(preJoinReadyServerId)) {
+            preJoinReadyServerId = "";
+            return true;
+        }
+        return false;
+    }
+
     public static void clear() {
         currentServerId = "";
+        preJoinReadyServerId = "";
     }
 }

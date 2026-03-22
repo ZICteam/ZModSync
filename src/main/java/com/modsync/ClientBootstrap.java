@@ -40,11 +40,17 @@ public final class ClientBootstrap {
                 return;
             }
 
+            String serverId = minecraft.getCurrentServer().ip;
+            ClientSyncContext.setCurrentServerId(serverId);
+            if (ClientSyncContext.consumePreJoinReady(serverId)) {
+                LoggerUtils.info("Skipping duplicate post-login handshake because pre-join sync already completed");
+                return;
+            }
+
             LoggerUtils.info("Client connection established, starting sync handshake");
-            ClientSyncContext.setCurrentServerId(minecraft.getCurrentServer().ip);
             NetworkHandler.sendClientHello();
             List<ManifestEntry> localFiles = ClientFileScanner.scanLocalFiles();
-            ServerSyncStatusCache.cacheLocalEntries(ClientSyncContext.getCurrentServerId(), localFiles);
+            ServerSyncStatusCache.cacheLocalEntries(serverId, localFiles);
             NetworkHandler.sendClientFileList(localFiles);
         }
 

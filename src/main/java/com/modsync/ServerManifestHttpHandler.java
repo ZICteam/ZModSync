@@ -48,13 +48,20 @@ public final class ServerManifestHttpHandler {
     public static ManifestData fetchManifest(String serverAddress, int discoveredPort, int connectTimeoutMs, int readTimeoutMs) throws IOException {
         String host = extractHost(serverAddress);
         IOException lastError = null;
+        List<String> attemptedUrls = new ArrayList<>();
 
         for (String url : buildManifestCandidateUrls(host, discoveredPort)) {
+            attemptedUrls.add(url);
             try {
                 java.net.HttpURLConnection connection = (java.net.HttpURLConnection) new java.net.URL(url).openConnection();
                 connection.setConnectTimeout(connectTimeoutMs);
                 connection.setReadTimeout(readTimeoutMs);
                 connection.setRequestMethod("GET");
+
+                int responseCode = connection.getResponseCode();
+                if (responseCode < 200 || responseCode >= 300) {
+                    throw new IOException("HTTP " + responseCode);
+                }
 
                 try (InputStream stream = connection.getInputStream()) {
                     String json = new String(stream.readAllBytes(), StandardCharsets.UTF_8);
@@ -66,7 +73,8 @@ public final class ServerManifestHttpHandler {
             }
         }
 
-        throw lastError == null ? new IOException("No manifest URL candidates available") : lastError;
+        String suffix = lastError == null ? "no response details" : lastError.getMessage();
+        throw new IOException("Unable to fetch ModSync manifest from " + String.join(", ", attemptedUrls) + " (" + suffix + ")", lastError);
     }
 
     public static String extractHost(String serverAddress) {
@@ -104,7 +112,7 @@ public final class ServerManifestHttpHandler {
         return host;
     }
 
-    private static String resolvePublicBaseUrl(String serverHost) {
+    public static String resolvePublicBaseUrl(String serverHost) {
         String configured = ConfigManager.publicHttpBaseUrl();
         if (!configured.isBlank()) {
             return stripTrailingSlash(configured);

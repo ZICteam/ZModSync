@@ -9,7 +9,6 @@ import net.minecraftforge.network.PacketDistributor;
 import net.minecraftforge.network.simple.SimpleChannel;
 import net.minecraftforge.fml.loading.FMLEnvironment;
 
-import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -211,26 +210,11 @@ public final class NetworkHandler {
     }
 
     private static String resolveBaseUrl(ServerPlayer player) {
-        String bind = ConfigManager.serverHttpBind();
-        String host = bind;
-
-        if ("0.0.0.0".equals(bind) || "::".equals(bind)) {
-            try {
-                host = player.server.getLocalIp();
-                if (host == null || host.isBlank()) {
-                    InetAddress loopback = InetAddress.getLoopbackAddress();
-                    host = loopback.getHostAddress();
-                }
-            } catch (Exception ignored) {
-                host = "127.0.0.1";
-            }
+        String host = player == null ? "127.0.0.1" : player.server.getLocalIp();
+        if (host == null || host.isBlank()) {
+            host = "127.0.0.1";
         }
-
-        if (host.contains(":") && !host.startsWith("[")) {
-            host = "[" + host + "]";
-        }
-
-        return "http://" + host + ":" + ConfigManager.serverHttpPort();
+        return ServerManifestHttpHandler.resolvePublicBaseUrl(host);
     }
 
     private static void sendChunkedToServer(String json) {

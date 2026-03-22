@@ -46,12 +46,13 @@ public final class ClientFileScanner {
     private static ManifestEntry toEntry(CategoryType category, Path root, Path file, FileHashCache.ScopeSession hashCache) {
         try {
             String relativePath = FileUtils.toRelativeUnixPath(root, file);
+            FileHashCache.FileFingerprint fingerprint = hashCache.describe(file, relativePath);
             return new ManifestEntry(
                     category,
                     relativePath,
                     file.getFileName().toString(),
-                    Files.size(file),
-                    hashCache.sha256(file, relativePath),
+                    fingerprint.size(),
+                    fingerprint.sha256(),
                     true,
                     category.isDefaultRestartRequired(),
                     ""

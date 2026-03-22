@@ -28,6 +28,13 @@ public final class LanguageManager {
         FALLBACK_EN.put("modsync.logs", "Logs");
         FALLBACK_EN.put("modsync.progress.title", "ModSync Progress");
         FALLBACK_EN.put("modsync.progress.none", "No downloads are currently active.");
+        FALLBACK_EN.put("modsync.progress.state_waiting", "Checking");
+        FALLBACK_EN.put("modsync.progress.state_downloading", "Downloading");
+        FALLBACK_EN.put("modsync.progress.state_complete", "Synchronized");
+        FALLBACK_EN.put("modsync.progress.state_failed", "Sync Failed");
+        FALLBACK_EN.put("modsync.progress.state_restart", "Restart Required");
+        FALLBACK_EN.put("modsync.error.title", "Sync Error");
+        FALLBACK_EN.put("modsync.error.check_logs", "Open the log panel below for details.");
         FALLBACK_EN.put("modsync.multiplayer.empty", "No saved servers yet.");
         FALLBACK_EN.put("modsync.multiplayer.details", "Server Details");
         FALLBACK_EN.put("modsync.multiplayer.no_selection", "Select a server from the list.");

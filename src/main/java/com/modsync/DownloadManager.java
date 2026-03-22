@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
+import java.net.SocketTimeoutException;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -52,6 +53,7 @@ public final class DownloadManager {
 
         AtomicBoolean restartRequired = new AtomicBoolean(false);
         AtomicBoolean failed = new AtomicBoolean(false);
+        AtomicInteger failedDownloads = new AtomicInteger();
         List<CompletableFuture<Void>> futures = new ArrayList<>();
 
         for (ManifestEntry entry : entries) {
@@ -68,6 +70,7 @@ public final class DownloadManager {
                     completedTasks.incrementAndGet();
                 } else {
                     failed.set(true);
+                    failedDownloads.incrementAndGet();
                 }
             }, executorService));
         }
@@ -80,6 +83,10 @@ public final class DownloadManager {
                         LoggerUtils.error("Download queue completed with failures", throwable);
                     } else {
                         LoggerUtils.info("Download queue complete");
+                    }
+                    if (failed.get()) {
+                        SyncIssueState.set("Download step failed for " + failedDownloads.get()
+                                + " file(s). Check the log panel for details.");
                     }
                     if (restartRequired.get()) {
                         RestartState.markRestartRequired();
@@ -104,6 +111,7 @@ public final class DownloadManager {
     }
 
     private boolean downloadWithRetry(DownloadTask task) {
+        Exception lastFailure = null;
         for (int i = 0; i <= ConfigManager.retryCount(); i++) {
             task.incrementAttempts();
             try {
@@ -112,10 +120,13 @@ public final class DownloadManager {
                 LoggerUtils.info("Downloaded " + task.getEntry().getRelativePath());
                 return true;
             } catch (Exception exception) {
+                lastFailure = exception;
                 LoggerUtils.warn("Download attempt " + task.getAttempts() + " failed for "
-                        + task.getEntry().getRelativePath() + ": " + exception.getMessage());
+                        + task.getEntry().getRelativePath() + ": " + describeException(exception));
             }
         }
+        SyncIssueState.set("Failed to download " + task.getEntry().getRelativePath() + ": "
+                + describeException(lastFailure));
         return false;
     }
 
@@ -133,6 +144,11 @@ public final class DownloadManager {
         connection.setConnectTimeout(10_000);
         connection.setReadTimeout(30_000);
         connection.setRequestMethod("GET");
+
+        int responseCode = connection.getResponseCode();
+        if (responseCode < 200 || responseCode >= 300) {
+            throw new IOException("HTTP " + responseCode + " while downloading " + entry.getRelativePath());
+        }
 
         try (InputStream inputStream = connection.getInputStream();
              OutputStream outputStream = Files.newOutputStream(downloadFile)) {
@@ -169,5 +185,16 @@ public final class DownloadManager {
             executorService.shutdownNow();
             executorService = null;
         }
+    }
+
+    private static String describeException(Exception exception) {
+        if (exception == null) {
+            return "unknown error";
+        }
+        if (exception instanceof SocketTimeoutException) {
+            return "network timeout";
+        }
+        String message = exception.getMessage();
+        return message == null || message.isBlank() ? exception.getClass().getSimpleName() : message;
     }
 }

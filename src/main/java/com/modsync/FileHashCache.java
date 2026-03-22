@@ -11,6 +11,7 @@ import java.lang.reflect.Type;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -74,8 +75,13 @@ public final class FileHashCache {
         }
 
         public String sha256(Path file, String relativePath) throws IOException {
-            long size = Files.size(file);
-            long lastModified = Files.getLastModifiedTime(file).toMillis();
+            return describe(file, relativePath).sha256();
+        }
+
+        public FileFingerprint describe(Path file, String relativePath) throws IOException {
+            BasicFileAttributes attributes = Files.readAttributes(file, BasicFileAttributes.class);
+            long size = attributes.size();
+            long lastModified = attributes.lastModifiedTime().toMillis();
 
             CacheEntry cached;
             synchronized (LOCK) {
@@ -84,7 +90,7 @@ public final class FileHashCache {
                         .get(relativePath);
                 if (cached != null && cached.size == size && cached.lastModified == lastModified) {
                     seenPaths.add(relativePath);
-                    return cached.sha256;
+                    return new FileFingerprint(size, cached.sha256);
                 }
             }
 
@@ -95,7 +101,7 @@ public final class FileHashCache {
             }
             seenPaths.add(relativePath);
             changed = true;
-            return sha256;
+            return new FileFingerprint(size, sha256);
         }
 
         @Override
@@ -148,5 +154,8 @@ public final class FileHashCache {
             this.lastModified = lastModified;
             this.sha256 = sha256;
         }
+    }
+
+    public record FileFingerprint(long size, String sha256) {
     }
 }

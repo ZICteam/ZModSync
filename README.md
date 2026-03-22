@@ -2,6 +2,8 @@
 
 ModSync is a universal Forge 1.20.1 mod that lets a server distribute mods and resource files to connecting clients while Minecraft is running.
 
+Current mod version: `1.0.11`
+
 ## Requirements
 
 - Java 17
@@ -11,10 +13,15 @@ ModSync is a universal Forge 1.20.1 mod that lets a server distribute mods and r
 ## Build
 
 ```bash
-gradle build
+./gradlew build
 ```
 
 The built universal jar is created under `build/libs/`.
+
+## CI
+
+The repository includes a GitHub Actions workflow that runs `./gradlew build` on pushes and pull requests.
+Minimal automated tests are available through `./gradlew test`.
 
 ## Server Repository Layout
 
@@ -42,8 +49,9 @@ The mod scans `mods/` plus `sync_repo/` and writes a generated manifest to `conf
 3. Server generates the manifest and returns it to the client.
 4. Client compares local files with the manifest.
 5. Missing or outdated files download in background threads over the embedded HTTP server.
-6. Files previously installed by ModSync are removed if they no longer exist in that server's manifest.
-7. If restart-required files were changed, the client sees a restart prompt.
+6. When sync was started from the connect flow, the client continues into the server automatically after pre-join sync completes.
+7. Files previously installed by ModSync are removed if they no longer exist in that server's manifest.
+8. If restart-required files were changed, the client sees a restart prompt.
 
 ## Configuration
 
@@ -76,13 +84,18 @@ The proxy must forward these paths to the internal ModSync HTTP server:
 - `/files/...`
 
 If `public_http_base_url` is empty, ModSync falls back to direct links using `server_http_port`.
+When `public_http_base_url` is set, ModSync now uses it consistently for generated download links in both manifest delivery paths.
 
 ## Notes
 
 - Files are downloaded through temporary files before replacement when enabled.
 - Hashes are verified with SHA-256.
 - Path traversal is blocked on both manifest generation and HTTP serving.
+- Cleanup only removes files that still match the last ModSync-managed version, which reduces the risk of deleting locally replaced files.
 - The mod logs operational events to `logs/modsync.log` when enabled.
+- Network and download failures are surfaced both in the log panel and directly on the sync progress screen.
+- Client and server scans avoid some duplicate filesystem metadata reads to behave a bit better on large file sets.
+- The sync progress screen now shows a clearer high-level state so players can tell whether ModSync is checking, downloading, finished, failed, or waiting for restart.
 
 ## Documentation
 
@@ -91,3 +104,14 @@ If `public_http_base_url` is empty, ModSync falls back to direct links using `se
 - `docs/Player_Guide_RU.md`
 - `docs/Discord_Templates_RU.md`
 - `docs/ModSync_FAQ_Discord.md`
+- `docs/Roadmap_RU.md`
+- `docs/Smoke_Checklist_RU.md`
+- `CHANGELOG.md`
+
+## Release Process
+
+For every change in this repository:
+
+- bump `mod_version` in `gradle.properties`
+- add an entry to `CHANGELOG.md` with the new version and a short summary of what changed
+- update documentation in `README.md` and/or `docs/` when behavior, setup, UI, or workflows changed

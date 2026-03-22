@@ -26,10 +26,30 @@ public final class SyncCleanupManager {
         }
 
         List<ManifestEntry> previousEntries = ManagedStateStore.load(serverId);
+        Map<String, ManifestEntry> localEntryMap = new HashMap<>();
+        for (ManifestEntry localEntry : localEntries) {
+            localEntryMap.put(localEntry.getIdentityKey(), localEntry);
+        }
         int deletedCount = 0;
+        int skippedCount = 0;
 
         for (ManifestEntry previousEntry : previousEntries) {
             if (currentEntries.containsKey(previousEntry.getIdentityKey())) {
+                continue;
+            }
+
+            if (shouldProtectFromCleanup(previousEntry)) {
+                skippedCount++;
+                LoggerUtils.warn("Skipped cleanup for protected file: " + previousEntry.getCategory().name()
+                        + " / " + previousEntry.getRelativePath());
+                continue;
+            }
+
+            ManifestEntry localEntry = localEntryMap.get(previousEntry.getIdentityKey());
+            if (localEntry != null && !matchesManagedVersion(localEntry, previousEntry)) {
+                skippedCount++;
+                LoggerUtils.warn("Skipped cleanup for locally modified managed file: "
+                        + previousEntry.getCategory().name() + " / " + previousEntry.getRelativePath());
                 continue;
             }
 
@@ -55,6 +75,9 @@ public final class SyncCleanupManager {
         if (deletedCount > 0) {
             LoggerUtils.info("Removed " + deletedCount + " obsolete managed files for " + serverId);
         }
+        if (skippedCount > 0) {
+            LoggerUtils.warn("Skipped cleanup for " + skippedCount + " managed files for " + serverId);
+        }
     }
 
     public static void saveManagedManifest(String serverId, ManifestData manifestData) {
@@ -75,5 +98,16 @@ public final class SyncCleanupManager {
             }
             current = current.getParent();
         }
+    }
+
+    private static boolean shouldProtectFromCleanup(ManifestEntry entry) {
+        return entry != null
+                && entry.getCategory() == CategoryType.MOD
+                && FileUtils.isProtectedModFileName(entry.getFileName());
+    }
+
+    private static boolean matchesManagedVersion(ManifestEntry localEntry, ManifestEntry previousEntry) {
+        return localEntry.getFileSize() == previousEntry.getFileSize()
+                && localEntry.getSha256().equalsIgnoreCase(previousEntry.getSha256());
     }
 }

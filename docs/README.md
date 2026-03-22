@@ -1,5 +1,10 @@
 # ModSync Docs
 
+Текущая версия мода: `1.0.11`
+
+История изменений:
+- [../CHANGELOG.md](../CHANGELOG.md)
+
 ## Что находится в этой папке
 
 - [ModSync_FAQ_Discord.md](Z:\My_mods\mods\docs\ModSync_FAQ_Discord.md)
@@ -13,6 +18,12 @@
 
 - [Discord_Templates_RU.md](Z:\My_mods\mods\docs\Discord_Templates_RU.md)
   - готовые шаблоны сообщений для Discord
+
+- [Roadmap_RU.md](Z:\My_mods\mods\docs\Roadmap_RU.md)
+  - дорожная карта развития мода
+
+- [Smoke_Checklist_RU.md](Z:\My_mods\mods\docs\Smoke_Checklist_RU.md)
+  - краткий чеклист ручной проверки после изменений
 
 ## Как использовать
 
@@ -37,3 +48,10 @@
 - экрана прогресса загрузки
 - экрана перезапуска
 - примера ошибки входа без ModSync
+
+## Правило обновлений
+
+После каждого изменения в проекте нужно:
+- поднять версию мода
+- записать изменения в `CHANGELOG.md`
+- обновить документацию, если изменение влияет на установку, использование или поддержку

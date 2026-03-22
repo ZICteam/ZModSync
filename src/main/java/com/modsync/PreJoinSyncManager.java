@@ -12,8 +12,13 @@ public final class PreJoinSyncManager {
     }
 
     public static void startForServer(ServerData serverData, Screen returnScreen) {
+        startForServer(serverData, returnScreen, true);
+    }
+
+    public static void startForServer(ServerData serverData, Screen returnScreen, boolean connectAfterSync) {
         Minecraft minecraft = Minecraft.getInstance();
         SyncLogBuffer.clear();
+        SyncIssueState.clear();
         ClientSyncContext.setCurrentServerId(serverData.ip);
         LoggerUtils.info("Selected server: " + serverData.name + " (" + serverData.ip + ")");
         minecraft.setScreen(new SyncProgressScreen(returnScreen));
@@ -37,24 +42,43 @@ public final class PreJoinSyncManager {
                 if (required.isEmpty()) {
                     LoggerUtils.info("Client is already synchronized");
                     SyncCleanupManager.saveManagedManifest(serverData.ip, manifest);
+                    cacheCurrentState(serverData.ip);
                     ServerSyncStatusCache.requestRefresh(serverData);
-                    minecraft.execute(() -> net.minecraft.client.gui.screens.ConnectScreen.startConnecting(
-                            returnScreen,
-                            minecraft,
-                            net.minecraft.client.multiplayer.resolver.ServerAddress.parseString(serverData.ip),
-                            serverData,
-                            false));
+                    if (connectAfterSync) {
+                        continueConnecting(minecraft, returnScreen, serverData);
+                    }
                     return;
                 }
 
                 DownloadManager.getInstance().startDownloads(required, () -> {
                     SyncCleanupManager.saveManagedManifest(serverData.ip, manifest);
+                    cacheCurrentState(serverData.ip);
+                    ServerSyncStatusCache.requestRefresh(serverData);
+                    if (connectAfterSync) {
+                        continueConnecting(minecraft, returnScreen, serverData);
+                    }
                 });
                 ServerSyncStatusCache.markDirty(serverData);
             } catch (Exception exception) {
+                SyncIssueState.set("Manifest step failed: " + exception.getMessage());
                 LoggerUtils.error("Pre-join sync failed", exception);
                 ServerSyncStatusCache.markDirty(serverData);
             }
         });
+    }
+
+    private static void continueConnecting(Minecraft minecraft, Screen returnScreen, ServerData serverData) {
+        ClientSyncContext.markPreJoinReady(serverData.ip);
+        minecraft.execute(() -> net.minecraft.client.gui.screens.ConnectScreen.startConnecting(
+                returnScreen,
+                minecraft,
+                net.minecraft.client.multiplayer.resolver.ServerAddress.parseString(serverData.ip),
+                serverData,
+                false));
+    }
+
+    private static void cacheCurrentState(String serverId) {
+        List<ManifestEntry> currentEntries = ClientFileScanner.scanLocalFiles(serverId);
+        ServerSyncStatusCache.cacheLocalEntries(serverId, currentEntries);
     }
 }
