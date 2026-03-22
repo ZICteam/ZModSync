@@ -1,0 +1,39 @@
+# Gradle
+.gradle/
+build/
+out/
+
+# IDE
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+
+# OS
+Thumbs.db
+Desktop.ini
+
+# Runtime/config output
+config/
+logs/
+runs/
+run/
+
+# Local caches and generated manifests
+*.log
+hs_err_pid*
+replay_pid*
+
+# Local toolchains and downloaded archives
+jdk-17.0.18+8/
+gradle-8.8/
+gradle-8.8-bin.zip
+temurin17.zip
+
+# Temporary/decompiled artifacts
+tmp-*.jar
+client_mappings.txt
+
+# Keep Gradle wrapper
+!gradle/wrapper/gradle-wrapper.jar
