@@ -3,6 +3,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -53,6 +54,45 @@ class ServerSyncStatusCacheTest {
     }
 
     @Test
+    void getCachedOrScanLocalEntriesReusesFreshSnapshotWithoutCallingScanner() {
+        String serverId = "play.example.net:25565";
+        List<ManifestEntry> cachedEntries = List.of(entry(CategoryType.MOD, "mods/cached.jar"));
+        ServerSyncStatusCache.putLocalScanForTests(serverId, cachedEntries, 1_000L);
+        AtomicInteger scannerCalls = new AtomicInteger();
+
+        List<ManifestEntry> result = ServerSyncStatusCache.getCachedOrScanLocalEntries(
+                serverId,
+                ignored -> {
+                    scannerCalls.incrementAndGet();
+                    return List.of(entry(CategoryType.MOD, "mods/scanned.jar"));
+                },
+                () -> 1_500L
+        );
+
+        assertEquals(0, scannerCalls.get());
+        assertEquals(List.of("MOD:mods/cached.jar"), result.stream().map(ManifestEntry::getIdentityKey).toList());
+    }
+
+    @Test
+    void getCachedOrScanLocalEntriesRefreshesExpiredSnapshot() {
+        String serverId = "play.example.net:25565";
+        ServerSyncStatusCache.putLocalScanForTests(serverId, List.of(entry(CategoryType.MOD, "mods/old.jar")), 1_000L);
+        AtomicInteger scannerCalls = new AtomicInteger();
+
+        List<ManifestEntry> result = ServerSyncStatusCache.getCachedOrScanLocalEntries(
+                serverId,
+                ignored -> {
+                    scannerCalls.incrementAndGet();
+                    return List.of(entry(CategoryType.CONFIG, "client/new.txt"));
+                },
+                () -> 122_500L
+        );
+
+        assertEquals(1, scannerCalls.get());
+        assertEquals(List.of("CONFIG:client/new.txt"), result.stream().map(ManifestEntry::getIdentityKey).toList());
+    }
+
+    @Test
     void markDirtyClearsCachedStatusForServer() {
         String serverId = "play.example.net:25565";
         ServerSyncStatusCache.putStatusForTests(serverId, ServerSyncStatusCache.SyncState.SYNCED, System.currentTimeMillis());
@@ -62,6 +102,27 @@ class ServerSyncStatusCacheTest {
         ServerSyncStatusCache.markDirty(serverId);
 
         assertTrue(ServerSyncStatusCache.shouldRefresh(serverId));
+    }
+
+    @Test
+    void markDirtyAlsoClearsLocalScanSnapshot() {
+        String serverId = "play.example.net:25565";
+        ServerSyncStatusCache.putLocalScanForTests(serverId, List.of(entry(CategoryType.MOD, "mods/old.jar")), 1_000L);
+        AtomicInteger scannerCalls = new AtomicInteger();
+
+        ServerSyncStatusCache.markDirty(serverId);
+
+        List<ManifestEntry> result = ServerSyncStatusCache.getCachedOrScanLocalEntries(
+                serverId,
+                ignored -> {
+                    scannerCalls.incrementAndGet();
+                    return List.of(entry(CategoryType.MOD, "mods/new.jar"));
+                },
+                () -> 1_500L
+        );
+
+        assertEquals(1, scannerCalls.get());
+        assertEquals(List.of("MOD:mods/new.jar"), result.stream().map(ManifestEntry::getIdentityKey).toList());
     }
 
     private static ManifestEntry entry(CategoryType category, String relativePath) {

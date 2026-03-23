@@ -7,6 +7,66 @@ The format is intentionally simple:
 - Every repository change must add a matching changelog entry.
 - Documentation must be updated in the same change whenever behavior, setup, or usage changes.
 
+## [1.0.66] - 2026-03-23
+
+### Changed
+- Added direct post-login orchestration coverage for `ClientBootstrap`, including singleplayer/local-session skipping, duplicate-handshake suppression after successful pre-join sync, and the normal multiplayer handshake path.
+
+## [1.0.65] - 2026-03-23
+
+### Changed
+- Added direct pre-join orchestration coverage for `PreJoinSyncManager`, including the decision path for already-synchronized clients, download-required cases, and whether auto-connect should continue immediately or only after downloads complete.
+
+## [1.0.64] - 2026-03-23
+
+### Changed
+- Expanded `ServerSyncStatusCache` coverage for local-scan cache reuse, expiry-based rescans, and `markDirty()` invalidation of cached local entries in addition to status snapshots.
+
+## [1.0.63] - 2026-03-23
+
+### Changed
+- Added manifest-fetch coverage for the full `serverAddress + discoveredPort + configured HTTP port` path, including discovered-port priority and fallback to the configured ModSync HTTP port.
+
+## [1.0.62] - 2026-03-23
+
+### Changed
+- Added direct public-manifest coverage for `ServerManifestHttpHandler`, including download URL generation per category and the empty fallback case when no cached manifest is available.
+
+## [1.0.61] - 2026-03-23
+
+### Changed
+- Added local-HTTP manifest-fetch coverage for `ServerManifestHttpHandler`, including successful manifest parsing, fallback to a later candidate URL, and total-failure reporting with attempted URLs.
+
+## [1.0.60] - 2026-03-23
+
+### Changed
+- Expanded `DownloadManager` local-HTTP integration coverage with a successful-HTTP but invalid-hash scenario, verifying failed queue state and cleanup of the temporary `.modsync.tmp` file.
+
+## [1.0.59] - 2026-03-23
+
+### Changed
+- Expanded local-HTTP `DownloadManager` integration coverage with a mixed queue scenario where one file succeeds and another fails, verifying partial progress accounting, restart-state behavior, and batch issue reporting.
+
+## [1.0.58] - 2026-03-23
+
+### Changed
+- Added local-HTTP integration coverage for `DownloadManager` queue execution, including successful async download completion, restart-state recording, completion callback behavior, and failed-download issue reporting.
+
+## [1.0.57] - 2026-03-23
+
+### Changed
+- Added direct `DownloadManager` post-download coverage for hash verification, invalid-temp-file deletion policy, and temp-file promotion into the final target path.
+
+## [1.0.56] - 2026-03-23
+
+### Changed
+- Added direct `DownloadTask` coverage for progress-byte accumulation, retry-attempt counting, completion tracking, and task wiring to manifest entry plus target path.
+
+## [1.0.55] - 2026-03-23
+
+### Changed
+- Added cleanup integration coverage for actual obsolete-file deletion, empty-parent cleanup, restart-state recording, and skipping locally modified managed files on temp client fixtures.
+
 ## [1.0.54] - 2026-03-23
 
 ### Changed

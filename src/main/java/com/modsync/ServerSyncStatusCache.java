@@ -7,6 +7,8 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.function.Function;
+import java.util.function.LongSupplier;
 
 public final class ServerSyncStatusCache {
     private static final long REFRESH_INTERVAL_MS = 120_000L;
@@ -66,20 +68,27 @@ public final class ServerSyncStatusCache {
     }
 
     public static List<ManifestEntry> getCachedOrScanLocalEntries(String serverId) {
+        return getCachedOrScanLocalEntries(serverId, ClientFileScanner::scanLocalFiles, System::currentTimeMillis);
+    }
+
+    static List<ManifestEntry> getCachedOrScanLocalEntries(String serverId,
+                                                           Function<String, List<ManifestEntry>> scanner,
+                                                           LongSupplier nowSupplier) {
         String normalizedServerId = normalizeServerId(serverId);
         LocalScanSnapshot snapshot = LOCAL_SCAN_BY_SERVER.get(normalizedServerId);
-        long now = System.currentTimeMillis();
+        long now = nowSupplier.getAsLong();
         if (snapshot != null && now - snapshot.timestamp <= LOCAL_SCAN_CACHE_MS) {
             return snapshot.entries;
         }
 
         synchronized (ServerSyncStatusCache.class) {
             snapshot = LOCAL_SCAN_BY_SERVER.get(normalizedServerId);
+            now = nowSupplier.getAsLong();
             if (snapshot != null && now - snapshot.timestamp <= LOCAL_SCAN_CACHE_MS) {
                 return snapshot.entries;
             }
 
-            List<ManifestEntry> entries = ClientFileScanner.scanLocalFiles(serverId);
+            List<ManifestEntry> entries = scanner.apply(serverId);
             LOCAL_SCAN_BY_SERVER.put(normalizedServerId, new LocalScanSnapshot(List.copyOf(entries), now));
             return entries;
         }
@@ -96,6 +105,10 @@ public final class ServerSyncStatusCache {
 
     static void putStatusForTests(String serverIp, SyncState state, long timestamp) {
         STATUS_BY_IP.put(serverIp, new StatusSnapshot(state, timestamp));
+    }
+
+    static void putLocalScanForTests(String serverId, List<ManifestEntry> entries, long timestamp) {
+        LOCAL_SCAN_BY_SERVER.put(normalizeServerId(serverId), new LocalScanSnapshot(List.copyOf(entries), timestamp));
     }
 
     static void resetForTests() {

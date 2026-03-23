@@ -6,6 +6,7 @@ import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 
 public final class SyncCleanupManager {
     private SyncCleanupManager() {
@@ -16,7 +17,21 @@ public final class SyncCleanupManager {
     }
 
     public static void cleanupObsoleteManagedFiles(String serverId, ManifestData manifestData, List<ManifestEntry> localEntries) {
-        if (!ConfigManager.deleteInvalidFiles() || serverId == null || serverId.isBlank() || manifestData == null) {
+        cleanupObsoleteManagedFiles(
+                serverId,
+                manifestData,
+                localEntries,
+                category -> FileUtils.resolveClientTargetRoot(category, serverId),
+                ConfigManager.deleteInvalidFiles()
+        );
+    }
+
+    static void cleanupObsoleteManagedFiles(String serverId,
+                                            ManifestData manifestData,
+                                            List<ManifestEntry> localEntries,
+                                            Function<CategoryType, Path> rootResolver,
+                                            boolean deleteInvalidFilesEnabled) {
+        if (!deleteInvalidFilesEnabled || serverId == null || serverId.isBlank() || manifestData == null) {
             return;
         }
 
@@ -51,7 +66,7 @@ public final class SyncCleanupManager {
                 continue;
             }
 
-            Path root = FileUtils.resolveClientTargetRoot(previousEntry.getCategory(), serverId);
+            Path root = rootResolver.apply(previousEntry.getCategory());
             Path file = FileUtils.resolveSafeChild(root, previousEntry.getRelativePath());
             try {
                 if (Files.deleteIfExists(file)) {

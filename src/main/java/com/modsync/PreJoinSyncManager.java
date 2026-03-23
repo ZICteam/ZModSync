@@ -8,6 +8,12 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 public final class PreJoinSyncManager {
+    record PreJoinSyncPlan(List<ManifestEntry> requiredEntries,
+                           boolean alreadySynchronized,
+                           boolean continueImmediately,
+                           boolean continueAfterDownloads) {
+    }
+
     private PreJoinSyncManager() {
     }
 
@@ -36,25 +42,25 @@ public final class PreJoinSyncManager {
 
                 List<ManifestEntry> localEntries = ServerSyncStatusCache.getCachedOrScanLocalEntries(serverData.ip);
                 SyncCleanupManager.cleanupObsoleteManagedFiles(serverData.ip, manifest, localEntries);
-                List<ManifestEntry> required = SyncComparator.findMissingOrOutdated(localEntries, manifest);
-                LoggerUtils.info("Pre-join sync found " + required.size() + " files to download");
+                PreJoinSyncPlan plan = buildSyncPlan(localEntries, manifest, connectAfterSync);
+                LoggerUtils.info("Pre-join sync found " + plan.requiredEntries().size() + " files to download");
 
-                if (required.isEmpty()) {
+                if (plan.alreadySynchronized()) {
                     LoggerUtils.info("Client is already synchronized");
                     SyncCleanupManager.saveManagedManifest(serverData.ip, manifest);
                     cacheCurrentState(serverData.ip);
                     ServerSyncStatusCache.requestRefresh(serverData);
-                    if (connectAfterSync) {
+                    if (plan.continueImmediately()) {
                         continueConnecting(minecraft, returnScreen, serverData);
                     }
                     return;
                 }
 
-                DownloadManager.getInstance().startDownloads(required, () -> {
+                DownloadManager.getInstance().startDownloads(plan.requiredEntries(), () -> {
                     SyncCleanupManager.saveManagedManifest(serverData.ip, manifest);
                     cacheCurrentState(serverData.ip);
                     ServerSyncStatusCache.requestRefresh(serverData);
-                    if (connectAfterSync) {
+                    if (plan.continueAfterDownloads()) {
                         continueConnecting(minecraft, returnScreen, serverData);
                     }
                 });
@@ -80,5 +86,18 @@ public final class PreJoinSyncManager {
     private static void cacheCurrentState(String serverId) {
         List<ManifestEntry> currentEntries = ClientFileScanner.scanLocalFiles(serverId);
         ServerSyncStatusCache.cacheLocalEntries(serverId, currentEntries);
+    }
+
+    static PreJoinSyncPlan buildSyncPlan(List<ManifestEntry> localEntries,
+                                         ManifestData manifest,
+                                         boolean connectAfterSync) {
+        List<ManifestEntry> requiredEntries = SyncComparator.findMissingOrOutdated(localEntries, manifest);
+        boolean alreadySynchronized = requiredEntries.isEmpty();
+        return new PreJoinSyncPlan(
+                requiredEntries,
+                alreadySynchronized,
+                alreadySynchronized && connectAfterSync,
+                !alreadySynchronized && connectAfterSync
+        );
     }
 }

@@ -18,11 +18,15 @@ public final class ServerManifestHttpHandler {
             manifest.setGeneratedAt(System.currentTimeMillis());
             manifest.setEntries(List.of());
         }
-        ManifestData publicManifest = new ManifestData();
-        publicManifest.setGeneratedAt(manifest.getGeneratedAt());
-        String publicBaseUrl = resolvePublicBaseUrl(serverHost);
+        return buildPublicManifest(manifest, resolvePublicBaseUrl(serverHost));
+    }
 
-        List<ManifestEntry> entries = manifest.getEntries().stream().map(entry -> {
+    static ManifestData buildPublicManifest(ManifestData manifest, String publicBaseUrl) {
+        ManifestData source = manifest == null ? new ManifestData() : manifest;
+        ManifestData publicManifest = new ManifestData();
+        publicManifest.setGeneratedAt(source.getGeneratedAt());
+
+        List<ManifestEntry> entries = source.getEntries().stream().map(entry -> {
             ManifestEntry copy = entry.copy();
             copy.setDownloadUrl(publicBaseUrl + "/files/" + entry.getCategory().getHttpSegment() + "/" + entry.getRelativePath());
             return copy;
@@ -44,11 +48,27 @@ public final class ServerManifestHttpHandler {
     }
 
     public static ManifestData fetchManifest(String serverAddress, int discoveredPort, int connectTimeoutMs, int readTimeoutMs) throws IOException {
+        return fetchManifest(serverAddress, discoveredPort, connectTimeoutMs, readTimeoutMs, ConfigManager.serverHttpPort());
+    }
+
+    static ManifestData fetchManifest(String serverAddress,
+                                      int discoveredPort,
+                                      int connectTimeoutMs,
+                                      int readTimeoutMs,
+                                      int serverHttpPort) throws IOException {
         String host = ManifestUrlResolver.extractHost(serverAddress);
+        return fetchManifestFromCandidates(
+                ManifestUrlResolver.buildManifestCandidateUrls(host, discoveredPort, serverHttpPort),
+                connectTimeoutMs,
+                readTimeoutMs
+        );
+    }
+
+    static ManifestData fetchManifestFromCandidates(List<String> candidateUrls, int connectTimeoutMs, int readTimeoutMs) throws IOException {
         IOException lastError = null;
         List<String> attemptedUrls = new ArrayList<>();
 
-        for (String url : ManifestUrlResolver.buildManifestCandidateUrls(host, discoveredPort, ConfigManager.serverHttpPort())) {
+        for (String url : candidateUrls) {
             attemptedUrls.add(url);
             try {
                 java.net.HttpURLConnection connection = (java.net.HttpURLConnection) new java.net.URL(url).openConnection();

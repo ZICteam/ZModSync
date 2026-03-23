@@ -2,7 +2,7 @@
 
 ModSync is a universal Forge 1.20.1 mod that lets a server distribute mods and resource files to connecting clients while Minecraft is running.
 
-Current mod version: `1.0.54`
+Current mod version: `1.0.66`
 
 ## Requirements
 
@@ -35,6 +35,18 @@ Client/runtime state holders are now also covered, including pre-join readiness 
 Client file scanning is now also covered directly on temp directory fixtures, including skipped extensions, generated relative paths, category-specific restart flags, and missing-root behavior.
 Manifest generation is now also covered directly on temp repository fixtures, including written manifest-copy output and multi-category entry generation.
 A mini integration test now also covers the core sync pipeline path from generated server manifest through client scan into comparison results.
+Cleanup is now also covered beyond decision logic, including real file deletion, empty-directory pruning, restart-state recording, and skipping locally modified managed files.
+Download progress bookkeeping is now also covered directly through `DownloadTask`, including downloaded-byte accumulation, retry counting, and completion state.
+The post-download finalize path is now also covered directly, including hash verification, invalid-temp-file cleanup policy, and temp-to-final promotion.
+`DownloadManager` queue execution is now also covered against a local HTTP server, including successful async completion and failed-download issue propagation.
+That download integration layer now also covers mixed queues with partial success, so batch issue handling and completed-task accounting are checked against a more realistic case.
+It now also covers the “HTTP succeeded but SHA-256 is invalid” path, including cleanup of the temporary `.modsync.tmp` file.
+The manifest HTTP stage is now also covered against local HTTP servers, including candidate fallback and attempted-URL failure reporting.
+The public-manifest transformation step is now also covered directly, including generated download URLs and the empty fallback when no cached manifest exists.
+The manifest-fetch path is now also covered end-to-end from `serverAddress` plus discovered/configured ports into actual candidate selection and HTTP retrieval.
+`ServerSyncStatusCache` now also has direct coverage for local scan caching and invalidation, which helps protect the pre-join flow from unnecessary rescans and stale cache reuse.
+`PreJoinSyncManager` now also has direct orchestration coverage for deciding whether sync can continue immediately, requires downloads first, or should avoid auto-continuation when connect-after-sync is disabled.
+`ClientBootstrap` now also has direct orchestration coverage for the post-login branch, including local-session skipping, duplicate-handshake suppression after pre-join sync, and the regular multiplayer handshake path.
 Version tags like `v1.0.17` can now trigger a GitHub Release workflow that runs the shared smoke helper and publishes the built jar.
 Release notes are now rendered from the top matching changelog section before the GitHub Release is created.
 The release workflow now also verifies that the git tag, `mod_version`, and the top changelog entry all describe the same version before publishing.

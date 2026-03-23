@@ -16,6 +16,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
 
 public final class DownloadManager {
     private static final DownloadManager INSTANCE = new DownloadManager();
@@ -37,6 +38,28 @@ public final class DownloadManager {
     }
 
     public synchronized void startDownloads(List<ManifestEntry> entries, Runnable completionAction) {
+        startDownloads(
+                entries,
+                completionAction,
+                entry -> FileUtils.resolveSafeChild(
+                        FileUtils.resolveClientTargetRoot(entry.getCategory(), ClientSyncContext.getCurrentServerId()),
+                        entry.getRelativePath()),
+                ConfigManager.downloadThreads(),
+                ConfigManager.retryCount(),
+                ConfigManager.verifyHashAfterDownload(),
+                ConfigManager.deleteInvalidFiles(),
+                ConfigManager.useTempFiles()
+        );
+    }
+
+    synchronized void startDownloads(List<ManifestEntry> entries,
+                                     Runnable completionAction,
+                                     Function<ManifestEntry, Path> targetResolver,
+                                     int downloadThreads,
+                                     int retryCount,
+                                     boolean verifyHashAfterDownload,
+                                     boolean deleteInvalidFiles,
+                                     boolean useTempFiles) {
         if (entries.isEmpty()) {
             LoggerUtils.info("No downloads required");
             if (completionAction != null) {
@@ -46,7 +69,7 @@ public final class DownloadManager {
         }
 
         shutdownExecutor();
-        this.executorService = Executors.newFixedThreadPool(ConfigManager.downloadThreads());
+        this.executorService = Executors.newFixedThreadPool(downloadThreads);
         this.totalTasks = entries.size();
         this.completedTasks.set(0);
         this.active = true;
@@ -58,11 +81,10 @@ public final class DownloadManager {
 
         for (ManifestEntry entry : entries) {
             LoggerUtils.info("Queued: " + entry.getCategory().name() + " / " + entry.getRelativePath());
-            DownloadTask task = new DownloadTask(entry, FileUtils.resolveSafeChild(
-                    FileUtils.resolveClientTargetRoot(entry.getCategory(), ClientSyncContext.getCurrentServerId()), entry.getRelativePath()));
+            DownloadTask task = new DownloadTask(entry, targetResolver.apply(entry));
 
             futures.add(CompletableFuture.runAsync(() -> {
-                if (downloadWithRetry(task)) {
+                if (downloadWithRetry(task, retryCount, verifyHashAfterDownload, deleteInvalidFiles, useTempFiles)) {
                     if (entry.isRestartRequired()) {
                         restartRequired.set(true);
                         RestartState.recordDownloaded(entry);
@@ -109,12 +131,16 @@ public final class DownloadManager {
         return totalTasks;
     }
 
-    private boolean downloadWithRetry(DownloadTask task) {
+    private boolean downloadWithRetry(DownloadTask task,
+                                      int retryCount,
+                                      boolean verifyHashAfterDownload,
+                                      boolean deleteInvalidFiles,
+                                      boolean useTempFiles) {
         Exception lastFailure = null;
-        for (int i = 0; i <= ConfigManager.retryCount(); i++) {
+        for (int i = 0; i <= retryCount; i++) {
             task.incrementAttempts();
             try {
-                download(task);
+                download(task, verifyHashAfterDownload, deleteInvalidFiles, useTempFiles);
                 task.markCompleted();
                 LoggerUtils.info("Downloaded " + task.getEntry().getRelativePath());
                 return true;
@@ -128,13 +154,16 @@ public final class DownloadManager {
         return false;
     }
 
-    private void download(DownloadTask task) throws IOException {
+    private void download(DownloadTask task,
+                          boolean verifyHashAfterDownload,
+                          boolean deleteInvalidFiles,
+                          boolean useTempFiles) throws IOException {
         ManifestEntry entry = task.getEntry();
         Path targetFile = task.getTargetFile();
         FileUtils.ensureParentExists(targetFile);
         LoggerUtils.info("Downloading: " + entry.getDownloadUrl());
 
-        Path downloadFile = ConfigManager.useTempFiles()
+        Path downloadFile = useTempFiles
                 ? targetFile.resolveSibling(targetFile.getFileName() + ".modsync.tmp")
                 : targetFile;
 
@@ -158,24 +187,7 @@ public final class DownloadManager {
             }
         }
 
-        if (ConfigManager.verifyHashAfterDownload()) {
-            String hash = HashUtils.sha256(downloadFile);
-            if (!hash.equalsIgnoreCase(entry.getSha256())) {
-                if (ConfigManager.deleteInvalidFiles()) {
-                    Files.deleteIfExists(downloadFile);
-                }
-                LoggerUtils.warn("Hash verification failed for " + entry.getRelativePath());
-                throw new IOException("Invalid SHA-256 for " + entry.getRelativePath());
-            }
-        }
-
-        if (ConfigManager.useTempFiles()) {
-            try {
-                Files.move(downloadFile, targetFile, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
-            } catch (IOException ignored) {
-                Files.move(downloadFile, targetFile, StandardCopyOption.REPLACE_EXISTING);
-            }
-        }
+        finalizeDownload(downloadFile, targetFile, entry, verifyHashAfterDownload, deleteInvalidFiles, useTempFiles);
     }
 
     private synchronized void shutdownExecutor() {
@@ -202,5 +214,31 @@ public final class DownloadManager {
         }
         String message = exception.getMessage();
         return message == null || message.isBlank() ? exception.getClass().getSimpleName() : message;
+    }
+
+    static void finalizeDownload(Path downloadFile,
+                                 Path targetFile,
+                                 ManifestEntry entry,
+                                 boolean verifyHashAfterDownload,
+                                 boolean deleteInvalidFiles,
+                                 boolean useTempFiles) throws IOException {
+        if (verifyHashAfterDownload) {
+            String hash = HashUtils.sha256(downloadFile);
+            if (!hash.equalsIgnoreCase(entry.getSha256())) {
+                if (deleteInvalidFiles) {
+                    Files.deleteIfExists(downloadFile);
+                }
+                LoggerUtils.warn("Hash verification failed for " + entry.getRelativePath());
+                throw new IOException("Invalid SHA-256 for " + entry.getRelativePath());
+            }
+        }
+
+        if (useTempFiles) {
+            try {
+                Files.move(downloadFile, targetFile, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+            } catch (IOException ignored) {
+                Files.move(downloadFile, targetFile, StandardCopyOption.REPLACE_EXISTING);
+            }
+        }
     }
 }
