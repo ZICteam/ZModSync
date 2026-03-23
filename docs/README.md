@@ -1,6 +1,6 @@
 # ModSync Docs
 
-Текущая версия мода: `1.0.16`
+Текущая версия мода: `1.0.54`
 
 История изменений:
 - [../CHANGELOG.md](../CHANGELOG.md)
@@ -27,6 +27,9 @@
 
 - [Operations_Guide_RU.md](Z:\My_mods\mods\docs\Operations_Guide_RU.md)
   - эксплуатационные инструкции для администраторов
+
+- [Release_Guide_RU.md](Z:\My_mods\mods\docs\Release_Guide_RU.md)
+  - инструкция по выпуску GitHub Release
 
 ## Как использовать
 

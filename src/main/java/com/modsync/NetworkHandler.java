@@ -22,9 +22,9 @@ public final class NetworkHandler {
     private static final int CHUNK_SIZE = 12000;
     private static final int HANDSHAKE_TIMEOUT_TICKS = 100;
     private static final String REQUIRED_MOD_KICK_MESSAGE = "Missing required client sync mod. Install Forge and ModSync to join this server.";
-    private static final Map<UUID, ChunkAccumulator> CLIENT_FILE_CHUNKS = new HashMap<>();
-    private static final ChunkAccumulator SERVER_MANIFEST_CHUNKS = new ChunkAccumulator();
-    private static final ChunkAccumulator START_DOWNLOAD_CHUNKS = new ChunkAccumulator();
+    private static final Map<UUID, ChunkedPayloadCodec.ChunkAccumulator> CLIENT_FILE_CHUNKS = new HashMap<>();
+    private static final ChunkedPayloadCodec.ChunkAccumulator SERVER_MANIFEST_CHUNKS = new ChunkedPayloadCodec.ChunkAccumulator();
+    private static final ChunkedPayloadCodec.ChunkAccumulator START_DOWNLOAD_CHUNKS = new ChunkedPayloadCodec.ChunkAccumulator();
     private static final Map<UUID, Integer> PENDING_HANDSHAKES = new ConcurrentHashMap<>();
 
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
@@ -77,7 +77,7 @@ public final class NetworkHandler {
 
         String json;
         synchronized (CLIENT_FILE_CHUNKS) {
-            ChunkAccumulator accumulator = CLIENT_FILE_CHUNKS.computeIfAbsent(player.getUUID(), ignored -> new ChunkAccumulator());
+            ChunkedPayloadCodec.ChunkAccumulator accumulator = CLIENT_FILE_CHUNKS.computeIfAbsent(player.getUUID(), ignored -> new ChunkedPayloadCodec.ChunkAccumulator());
             json = accumulator.accept(packet.getChunkIndex(), packet.getTotalChunks(), packet.getPayload());
             if (json != null) {
                 CLIENT_FILE_CHUNKS.remove(player.getUUID());
@@ -218,14 +218,14 @@ public final class NetworkHandler {
     }
 
     private static void sendChunkedToServer(String json) {
-        List<String> chunks = splitJson(json);
+        List<String> chunks = ChunkedPayloadCodec.split(json, CHUNK_SIZE);
         for (int i = 0; i < chunks.size(); i++) {
             CHANNEL.sendToServer(new PacketClientFileList(i, chunks.size(), chunks.get(i)));
         }
     }
 
     private static void sendChunkedToPlayer(ServerPlayer player, String json, ChunkTarget target) {
-        List<String> chunks = splitJson(json);
+        List<String> chunks = ChunkedPayloadCodec.split(json, CHUNK_SIZE);
         for (int i = 0; i < chunks.size(); i++) {
             switch (target) {
                 case MANIFEST ->
@@ -236,43 +236,8 @@ public final class NetworkHandler {
         }
     }
 
-    private static List<String> splitJson(String json) {
-        List<String> chunks = new ArrayList<>();
-        if (json == null || json.isEmpty()) {
-            chunks.add("");
-            return chunks;
-        }
-
-        for (int index = 0; index < json.length(); index += CHUNK_SIZE) {
-            chunks.add(json.substring(index, Math.min(json.length(), index + CHUNK_SIZE)));
-        }
-        return chunks;
-    }
-
     private enum ChunkTarget {
         MANIFEST,
         START_DOWNLOAD
-    }
-
-    private static final class ChunkAccumulator {
-        private int expectedChunks;
-        private final StringBuilder builder = new StringBuilder();
-
-        public String accept(int chunkIndex, int totalChunks, String payload) {
-            if (chunkIndex == 0) {
-                builder.setLength(0);
-                expectedChunks = totalChunks;
-            }
-
-            builder.append(payload);
-            if (chunkIndex + 1 < expectedChunks) {
-                return null;
-            }
-
-            String result = builder.toString();
-            builder.setLength(0);
-            expectedChunks = 0;
-            return result;
-        }
     }
 }

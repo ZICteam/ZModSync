@@ -1,6 +1,6 @@
 # ModSync Roadmap
 
-Текущая версия мода: `1.0.16`
+Текущая версия мода: `1.0.54`
 
 Этот документ фиксирует практическую дорожную карту развития ModSync.
 Фокус: стабильная синхронизация модов и клиентских файлов для одного сервера без усложнения через профили модов.
@@ -61,11 +61,13 @@
 ## Следующий этап
 
 - улучшить CI и выпуск артефактов
-  Статус: базовая выгрузка build artifact добавлена в `1.0.14`
+  Статус: базовая выгрузка build artifact добавлена в `1.0.14`, GitHub Releases workflow добавлен в `1.0.17`, CI warning-clean verification и upload test report добавлены в `1.0.37`, concurrency/timeouts hardening добавлены в `1.0.38`, release version consistency check добавлен в `1.0.39`, checksum publication добавлена в `1.0.45`
 - постепенно убрать предупреждения совместимости с будущим Gradle 9
+  Статус: базовая модернизация build script выполнена в `1.0.18`, warning перепроверен в `1.0.21`, в `1.0.34` локально не воспроизводился стабильно, в `1.0.35` была уточнена JUnit-конфигурация, а в `1.0.36` warning про automatic test framework implementation loading убран через явный `junit-platform-launcher`
 - расширить тестовое покрытие сценариями cleanup и download flow
-  Статус: cleanup decision coverage добавлено в `1.0.15`, download-flow messaging coverage добавлено в `1.0.16`
+  Статус: cleanup decision coverage добавлено в `1.0.15`, download-flow messaging coverage добавлено в `1.0.16`, sync progress state coverage добавлено в `1.0.22`, sync comparison edge-case coverage добавлено в `1.0.23`, packet chunking coverage добавлено в `1.0.24`, manifest URL resolution coverage добавлено в `1.0.25`, MOTD metadata coverage добавлено в `1.0.26`, restart-state coverage добавлено в `1.0.27`, managed-state naming coverage добавлено в `1.0.28`, server sync status cache coverage добавлено в `1.0.29`, category mapping coverage добавлено в `1.0.30`, file path filtering coverage добавлено в `1.0.31`, protected-file detection coverage добавлено в `1.0.32`, manifest entry coverage добавлено в `1.0.33`, file hash cache coverage добавлено в `1.0.48`, full managed-state persistence coverage добавлено в `1.0.49`, direct hash utility coverage добавлено в `1.0.50`, client/runtime state-holder coverage добавлено в `1.0.51`, direct client file scanner coverage добавлено в `1.0.52`, direct manifest generator coverage добавлено в `1.0.53`, а mini sync-pipeline integration coverage добавлено в `1.0.54`
 - при необходимости собрать отдельный release-процесс под GitHub Releases
+  Статус: базовый release workflow добавлен в `1.0.17`, release guide добавлен в `1.0.20`, release version consistency check добавлен в `1.0.39`, локальный release smoke helper добавлен в `1.0.40`, CI/release переведены на тот же smoke helper в `1.0.41`, release notes rendering из changelog добавлен в `1.0.42`, artifact verification добавлена в `1.0.43`, jar metadata verification добавлена в `1.0.44`, checksum generation/publication добавлена в `1.0.45`
 
 ## Правило сопровождения
 

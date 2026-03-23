@@ -42,6 +42,14 @@ public final class RestartState {
         }
     }
 
+    static void resetForTests() {
+        RESTART_REQUIRED.set(false);
+        PROMPT_PENDING.set(false);
+        synchronized (CHANGE_LOCK) {
+            CHANGES.clear();
+        }
+    }
+
     private static void recordChange(ChangeType type, ManifestEntry entry) {
         if (entry == null) {
             return;

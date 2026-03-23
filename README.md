@@ -2,13 +2,13 @@
 
 ModSync is a universal Forge 1.20.1 mod that lets a server distribute mods and resource files to connecting clients while Minecraft is running.
 
-Current mod version: `1.0.16`
+Current mod version: `1.0.54`
 
 ## Requirements
 
 - Java 17
 - Gradle 8.x or the Gradle wrapper
-- Minecraft Forge 1.20.1 / Forge 47.x
+- Minecraft Forge 1.20.1 / Forge 47.4.18+
 
 ## Build
 
@@ -20,10 +20,28 @@ The built universal jar is created under `build/libs/`.
 
 ## CI
 
-The repository includes a GitHub Actions workflow that runs `./gradlew build` on pushes and pull requests.
+The repository includes a GitHub Actions workflow that runs the shared `./scripts/run-release-smoke.sh` checks on pushes and pull requests.
 Minimal automated tests are available through `./gradlew test`.
 Successful CI runs also upload the built jar from `build/libs/` as a workflow artifact.
-Test coverage now includes cleanup decision cases and download-flow error messaging in addition to path safety, manifest JSON, and file comparison.
+CI and release flows now also generate and publish a matching `.sha256` checksum file for the jar.
+CI also uploads the HTML test report from `build/reports/tests/test/`.
+Workflow concurrency now cancels superseded in-progress CI runs on the same ref, and both CI/release jobs have explicit timeouts.
+For local release prep, `./scripts/run-release-smoke.sh vX.Y.Z` now bundles the same core checks plus version consistency, expected-jar verification, version metadata validation inside the jar, and checksum generation, and the same helper is used by GitHub Actions.
+Test coverage now includes cleanup decisions, managed-state naming, server sync status caching, category mapping, file path filtering rules, protected-file detection, manifest entry copy semantics, sync comparison edge cases, packet chunking/reassembly, manifest URL resolution, MOTD metadata decoding, restart-state bookkeeping, download-flow error messaging, and sync progress state resolution in addition to path safety and manifest JSON.
+The performance-oriented file hash cache is now also covered for persistence, invalidation, scope cleanup, and client/server scope separation.
+Managed-state persistence is now also covered beyond naming alone, including round-trip save/load behavior and invalid-json fallback.
+Hashing behavior is now also covered directly with known SHA-256 vectors and format checks, which strengthens the base layer under manifest generation and file verification.
+Client/runtime state holders are now also covered, including pre-join readiness bookkeeping, sync issue message normalization, and bounded log buffering for the sync UI.
+Client file scanning is now also covered directly on temp directory fixtures, including skipped extensions, generated relative paths, category-specific restart flags, and missing-root behavior.
+Manifest generation is now also covered directly on temp repository fixtures, including written manifest-copy output and multi-category entry generation.
+A mini integration test now also covers the core sync pipeline path from generated server manifest through client scan into comparison results.
+Version tags like `v1.0.17` can now trigger a GitHub Release workflow that runs the shared smoke helper and publishes the built jar.
+Release notes are now rendered from the top matching changelog section before the GitHub Release is created.
+The release workflow now also verifies that the git tag, `mod_version`, and the top changelog entry all describe the same version before publishing.
+The Gradle build script has also been cleaned up toward more current task/publishing conventions.
+The Gradle test-framework deprecation has been addressed by using explicit JUnit Jupiter API, engine, and platform launcher dependencies, and the local `build --warning-mode all` path is currently clean.
+The Forge 47.4.18 compile path is now also clean of the earlier removal warnings after updating `ResourceLocation` creation and config registration to the newer API-safe patterns.
+Manifest HTTP fallback resolution is now covered by unit tests for direct URLs, configured public base URLs, and IPv6 hosts.
 
 ## Server Repository Layout
 
@@ -110,6 +128,7 @@ Detailed deployment examples are documented in `docs/Server_Setup_RU.md`.
 - `docs/Roadmap_RU.md`
 - `docs/Smoke_Checklist_RU.md`
 - `docs/Operations_Guide_RU.md`
+- `docs/Release_Guide_RU.md`
 - `CHANGELOG.md`
 
 ## Release Process
@@ -119,3 +138,4 @@ For every change in this repository:
 - bump `mod_version` in `gradle.properties`
 - add an entry to `CHANGELOG.md` with the new version and a short summary of what changed
 - update documentation in `README.md` and/or `docs/` when behavior, setup, UI, or workflows changed
+- optionally create and push a tag like `v1.0.17` to publish a GitHub Release artifact

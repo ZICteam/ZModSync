@@ -51,7 +51,9 @@ repositories {
 
 dependencies {
     minecraft "net.minecraftforge:forge:${minecraft_version}-${forge_version}"
-    testImplementation 'org.junit.jupiter:junit-jupiter:5.10.2'
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.10.2'
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.10.2'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.10.2'
 }
 
 tasks.withType(ProcessResources).configureEach {
@@ -83,14 +85,14 @@ tasks.named('test', Test).configure {
     useJUnitPlatform()
 }
 
-jar {
+tasks.named('jar', Jar).configure {
     manifest {
         attributes([
                 'Specification-Title'     : mod_name,
                 'Specification-Vendor'    : mod_authors,
                 'Specification-Version'   : '1',
                 'Implementation-Title'    : project.name,
-                'Implementation-Version'  : project.jar.archiveVersion,
+                'Implementation-Version'  : project.version,
                 'Implementation-Vendor'   : mod_authors,
                 'Implementation-Timestamp': new Date().format("yyyy-MM-dd'T'HH:mm:ssZ")
         ])
@@ -100,12 +102,12 @@ jar {
 publishing {
     publications {
         register('mavenJava', MavenPublication) {
-            artifact jar
+            artifact(tasks.named('jar'))
         }
     }
     repositories {
         maven {
-            url "file://${project.projectDir}/mcmodsrepo"
+            url = uri(layout.projectDirectory.dir('mcmodsrepo'))
         }
     }
 }

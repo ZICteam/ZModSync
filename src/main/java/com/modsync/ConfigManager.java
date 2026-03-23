@@ -2,7 +2,8 @@ package com.modsync;
 
 import com.electronwill.nightconfig.core.file.CommentedFileConfig;
 import net.minecraftforge.common.ForgeConfigSpec;
-import net.minecraftforge.fml.ModLoadingContext;
+import net.minecraftforge.fml.ModContainer;
+import net.minecraftforge.fml.ModList;
 import net.minecraftforge.fml.config.ModConfig;
 
 import java.io.IOException;
@@ -78,7 +79,10 @@ public final class ConfigManager {
     }
 
     public static void register() {
-        ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON, SPEC, "modsync.toml");
+        ModContainer container = ModList.get()
+                .getModContainerById(ModSync.MOD_ID)
+                .orElseThrow(() -> new IllegalStateException("Unable to resolve ModSync mod container during config registration"));
+        container.addConfig(new ModConfig(ModConfig.Type.COMMON, SPEC, container, "modsync.toml"));
     }
 
     public static String language() {

@@ -4,9 +4,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Set;
 
 public final class ServerManifestHttpHandler {
     private ServerManifestHttpHandler() {
@@ -46,11 +44,11 @@ public final class ServerManifestHttpHandler {
     }
 
     public static ManifestData fetchManifest(String serverAddress, int discoveredPort, int connectTimeoutMs, int readTimeoutMs) throws IOException {
-        String host = extractHost(serverAddress);
+        String host = ManifestUrlResolver.extractHost(serverAddress);
         IOException lastError = null;
         List<String> attemptedUrls = new ArrayList<>();
 
-        for (String url : buildManifestCandidateUrls(host, discoveredPort)) {
+        for (String url : ManifestUrlResolver.buildManifestCandidateUrls(host, discoveredPort, ConfigManager.serverHttpPort())) {
             attemptedUrls.add(url);
             try {
                 java.net.HttpURLConnection connection = (java.net.HttpURLConnection) new java.net.URL(url).openConnection();
@@ -78,66 +76,14 @@ public final class ServerManifestHttpHandler {
     }
 
     public static String extractHost(String serverAddress) {
-        if (serverAddress == null || serverAddress.isBlank()) {
-            return "127.0.0.1";
-        }
-
-        String address = serverAddress.trim();
-        if (address.startsWith("[")) {
-            int end = address.indexOf(']');
-            if (end > 0) {
-                return address.substring(1, end);
-            }
-        }
-
-        int colonCount = 0;
-        for (int i = 0; i < address.length(); i++) {
-            if (address.charAt(i) == ':') {
-                colonCount++;
-            }
-        }
-
-        if (colonCount == 1) {
-            int index = address.lastIndexOf(':');
-            return address.substring(0, index);
-        }
-
-        return address;
+        return ManifestUrlResolver.extractHost(serverAddress);
     }
 
     public static String normalizeHost(String host) {
-        if (host.contains(":") && !host.startsWith("[")) {
-            return "[" + host + "]";
-        }
-        return host;
+        return ManifestUrlResolver.normalizeHost(host);
     }
 
     public static String resolvePublicBaseUrl(String serverHost) {
-        String configured = ConfigManager.publicHttpBaseUrl();
-        if (!configured.isBlank()) {
-            return stripTrailingSlash(configured);
-        }
-        return "http://" + normalizeHost(serverHost) + ":" + ConfigManager.serverHttpPort();
-    }
-
-    private static List<String> buildManifestCandidateUrls(String host, int discoveredPort) {
-        Set<String> urls = new LinkedHashSet<>();
-        String normalizedHost = normalizeHost(host);
-
-        if (discoveredPort > 0) {
-            urls.add("http://" + normalizedHost + ":" + discoveredPort + "/manifest");
-        }
-        urls.add("http://" + normalizedHost + ":" + ConfigManager.serverHttpPort() + "/manifest");
-        urls.add("https://" + normalizedHost + "/manifest");
-        urls.add("http://" + normalizedHost + "/manifest");
-        return new ArrayList<>(urls);
-    }
-
-    private static String stripTrailingSlash(String value) {
-        String result = value;
-        while (result.endsWith("/")) {
-            result = result.substring(0, result.length() - 1);
-        }
-        return result;
+        return ManifestUrlResolver.resolvePublicBaseUrl(ConfigManager.publicHttpBaseUrl(), serverHost, ConfigManager.serverHttpPort());
     }
 }

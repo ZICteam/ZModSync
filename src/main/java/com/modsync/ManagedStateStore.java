@@ -7,6 +7,8 @@ import java.nio.file.Path;
 import java.util.List;
 
 public final class ManagedStateStore {
+    private static Path stateRootOverride;
+
     private ManagedStateStore() {
     }
 
@@ -43,9 +45,27 @@ public final class ManagedStateStore {
     }
 
     private static Path stateFile(String serverId) {
-        return FileUtils.configDir()
-                .resolve("modsync-state")
-                .resolve(FileUtils.sanitizeServerId(serverId) + "-" + Integer.toHexString(serverId.hashCode()) + ".json")
+        return stateRoot()
+                .resolve(buildStateFileName(serverId))
                 .normalize();
+    }
+
+    private static Path stateRoot() {
+        if (stateRootOverride != null) {
+            return stateRootOverride;
+        }
+        return FileUtils.configDir().resolve("modsync-state").normalize();
+    }
+
+    static String buildStateFileName(String serverId) {
+        return FileUtils.sanitizeServerId(serverId) + "-" + Integer.toHexString(serverId.hashCode()) + ".json";
+    }
+
+    static void overrideStateRootForTests(Path path) {
+        stateRootOverride = path == null ? null : path.toAbsolutePath().normalize();
+    }
+
+    static void resetForTests() {
+        stateRootOverride = null;
     }
 }

@@ -8,6 +8,37 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class SyncComparatorTest {
     @Test
+    void compareRecognizesMatchingEntriesIgnoringHashCase() {
+        ManifestEntry server = entry(CategoryType.MOD, "mods/a.jar", 10L, "ABCDEF");
+        ManifestEntry client = entry(CategoryType.MOD, "mods/a.jar", 10L, "abcdef");
+
+        assertEquals(SyncComparator.ComparisonResult.MATCHES, SyncComparator.compare(server, client));
+    }
+
+    @Test
+    void compareMarksMissingClientEntry() {
+        ManifestEntry server = entry(CategoryType.CONFIG, "client/options.txt", 30L, "ccc");
+
+        assertEquals(SyncComparator.ComparisonResult.MISSING, SyncComparator.compare(server, null));
+    }
+
+    @Test
+    void compareMarksSizeChangeBeforeHashDifference() {
+        ManifestEntry server = entry(CategoryType.CONFIG, "client/options.txt", 31L, "ccc-new");
+        ManifestEntry client = entry(CategoryType.CONFIG, "client/options.txt", 30L, "ccc-old");
+
+        assertEquals(SyncComparator.ComparisonResult.SIZE_CHANGED, SyncComparator.compare(server, client));
+    }
+
+    @Test
+    void compareMarksHashChangeWhenSizeMatches() {
+        ManifestEntry server = entry(CategoryType.RESOURCEPACK, "packs/ui.zip", 40L, "aaa");
+        ManifestEntry client = entry(CategoryType.RESOURCEPACK, "packs/ui.zip", 40L, "bbb");
+
+        assertEquals(SyncComparator.ComparisonResult.HASH_CHANGED, SyncComparator.compare(server, client));
+    }
+
+    @Test
     void findMissingOrOutdatedReturnsOnlyChangedEntries() {
         ManifestEntry currentMod = entry(CategoryType.MOD, "mods/a.jar", 10L, "aaa");
         ManifestEntry changedConfig = entry(CategoryType.CONFIG, "client/options.txt", 30L, "ccc");
@@ -26,6 +57,21 @@ class SyncComparatorTest {
                 "CONFIG:client/options.txt",
                 "SHADERPACK:packs/visual.zip"
         ), result.stream().map(ManifestEntry::getIdentityKey).toList());
+    }
+
+    @Test
+    void findMissingOrOutdatedDoesNotMixEntriesFromDifferentCategories() {
+        ManifestEntry localConfig = entry(CategoryType.CONFIG, "shared/file.dat", 10L, "aaa");
+
+        ManifestData manifest = new ManifestData();
+        manifest.setEntries(List.of(
+                entry(CategoryType.MOD, "shared/file.dat", 10L, "aaa"),
+                entry(CategoryType.CONFIG, "shared/file.dat", 10L, "aaa")
+        ));
+
+        List<ManifestEntry> result = SyncComparator.findMissingOrOutdated(List.of(localConfig), manifest);
+
+        assertEquals(List.of("MOD:shared/file.dat"), result.stream().map(ManifestEntry::getIdentityKey).toList());
     }
 
     private static ManifestEntry entry(CategoryType category, String relativePath, long fileSize, String sha256) {

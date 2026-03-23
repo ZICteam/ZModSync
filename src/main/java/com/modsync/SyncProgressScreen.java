@@ -32,6 +32,13 @@ public class SyncProgressScreen extends Screen {
         guiGraphics.drawCenteredString(font, title, width / 2, 30, 0xFFFFFF);
 
         DownloadManager manager = DownloadManager.getInstance();
+        List<String> lines = SyncLogBuffer.snapshot();
+        SyncProgressStateResolver.SyncProgressVisualState visualState = SyncProgressStateResolver.resolve(
+                SyncIssueState.hasIssue(),
+                manager.isActive(),
+                RestartState.isRestartRequired(),
+                !lines.isEmpty()
+        );
         if (backButton != null) {
             backButton.active = !manager.isActive();
         }
@@ -41,11 +48,10 @@ public class SyncProgressScreen extends Screen {
         int boxRight = width - 40;
         int boxBottom = height - 60;
 
-        renderStatusBox(guiGraphics, manager, boxLeft, 74, boxRight);
+        renderStatusBox(guiGraphics, manager, visualState, boxLeft, 74, boxRight);
         guiGraphics.fill(boxLeft, boxTop, boxRight, boxBottom, 0x99000000);
         guiGraphics.drawString(font, LanguageManager.component("modsync.logs"), boxLeft + 8, boxTop + 8, 0xFFFFFF, false);
 
-        java.util.List<String> lines = SyncLogBuffer.snapshot();
         int contentLeft = boxLeft + 8;
         int contentRight = boxRight - 8 - SCROLLBAR_WIDTH - 4;
         int visibleLines = getVisibleLines(boxTop, boxBottom);
@@ -60,72 +66,47 @@ public class SyncProgressScreen extends Screen {
         }
         renderScrollBar(guiGraphics, boxRight - 8 - SCROLLBAR_WIDTH, boxTop + 22, boxBottom - 8, lines.size(), visibleLines, logScroll);
 
-        if (!manager.isActive() && RestartState.isRestartRequired()) {
+        if (!manager.isActive() && visualState.showsRestartSummary()) {
             renderRestartSummary(guiGraphics, boxLeft, boxTop, boxRight, boxBottom);
         }
-        if (!manager.isActive() && SyncIssueState.hasIssue()) {
+        if (!manager.isActive() && visualState.showsIssueSummary()) {
             renderIssueSummary(guiGraphics, boxLeft, boxTop, boxRight);
         }
 
         super.render(guiGraphics, mouseX, mouseY, partialTick);
     }
 
-    private void renderStatusBox(GuiGraphics guiGraphics, DownloadManager manager, int left, int top, int right) {
+    private void renderStatusBox(GuiGraphics guiGraphics, DownloadManager manager, SyncProgressStateResolver.SyncProgressVisualState visualState, int left, int top, int right) {
         int bottom = top + STATUS_BOX_HEIGHT;
-        int color = statusAccentColor(manager);
+        int color = visualState.accentColor();
         guiGraphics.fill(left, top, right, bottom, 0x990F0F0F);
         guiGraphics.fill(left, top, left + 4, bottom, color);
 
-        String titleText = statusTitle(manager);
-        String detailText = statusDetail(manager);
+        String titleText = statusTitle(visualState);
+        String detailText = statusDetail(manager, visualState);
         guiGraphics.drawString(font, titleText, left + 12, top + 9, 0xFFFFFF, false);
         guiGraphics.drawString(font, font.plainSubstrByWidth(detailText, right - left - 24), left + 12, top + 23, 0xD0D0D0, false);
     }
 
-    private String statusTitle(DownloadManager manager) {
-        if (SyncIssueState.hasIssue()) {
-            return LanguageManager.get("modsync.progress.state_failed");
-        }
-        if (manager.isActive()) {
-            return LanguageManager.get("modsync.progress.state_downloading");
-        }
-        if (RestartState.isRestartRequired()) {
-            return LanguageManager.get("modsync.progress.state_restart");
-        }
-        if (SyncLogBuffer.snapshot().isEmpty()) {
-            return LanguageManager.get("modsync.progress.state_waiting");
-        }
-        return LanguageManager.get("modsync.progress.state_complete");
+    private String statusTitle(SyncProgressStateResolver.SyncProgressVisualState visualState) {
+        return switch (visualState) {
+            case FAILED -> LanguageManager.get("modsync.progress.state_failed");
+            case DOWNLOADING -> LanguageManager.get("modsync.progress.state_downloading");
+            case RESTART_REQUIRED -> LanguageManager.get("modsync.progress.state_restart");
+            case WAITING -> LanguageManager.get("modsync.progress.state_waiting");
+            case COMPLETE -> LanguageManager.get("modsync.progress.state_complete");
+        };
     }
 
-    private String statusDetail(DownloadManager manager) {
-        if (SyncIssueState.hasIssue()) {
-            return SyncIssueState.getMessage();
-        }
-        if (manager.isActive()) {
-            return LanguageManager.get("modsync.progress.active")
+    private String statusDetail(DownloadManager manager, SyncProgressStateResolver.SyncProgressVisualState visualState) {
+        return switch (visualState) {
+            case FAILED -> SyncIssueState.getMessage();
+            case DOWNLOADING -> LanguageManager.get("modsync.progress.active")
                     .formatted(manager.getCompletedTasks(), manager.getTotalTasks());
-        }
-        if (RestartState.isRestartRequired()) {
-            return LanguageManager.get("modsync.restart_required");
-        }
-        if (SyncLogBuffer.snapshot().isEmpty()) {
-            return LanguageManager.get("modsync.checking");
-        }
-        return LanguageManager.get("modsync.download_complete");
-    }
-
-    private int statusAccentColor(DownloadManager manager) {
-        if (SyncIssueState.hasIssue()) {
-            return 0xFF8A3A3A;
-        }
-        if (manager.isActive()) {
-            return 0xFF4B6EAF;
-        }
-        if (RestartState.isRestartRequired()) {
-            return 0xFF8C6A2B;
-        }
-        return 0xFF2E7D4F;
+            case RESTART_REQUIRED -> LanguageManager.get("modsync.restart_required");
+            case WAITING -> LanguageManager.get("modsync.checking");
+            case COMPLETE -> LanguageManager.get("modsync.download_complete");
+        };
     }
 
     private void renderRestartSummary(GuiGraphics guiGraphics, int boxLeft, int boxTop, int boxRight, int boxBottom) {

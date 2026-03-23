@@ -47,8 +47,7 @@ public final class ServerSyncStatusCache {
     }
 
     public static void markDirty(ServerData serverData) {
-        STATUS_BY_IP.remove(serverData.ip);
-        LOCAL_SCAN_BY_SERVER.remove(normalizeServerId(serverData.ip));
+        markDirty(serverData.ip);
     }
 
     private static void refreshNow(ServerData serverData) {
@@ -90,6 +89,20 @@ public final class ServerSyncStatusCache {
         return serverId == null ? "" : serverId;
     }
 
+    static void markDirty(String serverId) {
+        STATUS_BY_IP.remove(serverId);
+        LOCAL_SCAN_BY_SERVER.remove(normalizeServerId(serverId));
+    }
+
+    static void putStatusForTests(String serverIp, SyncState state, long timestamp) {
+        STATUS_BY_IP.put(serverIp, new StatusSnapshot(state, timestamp));
+    }
+
+    static void resetForTests() {
+        STATUS_BY_IP.clear();
+        LOCAL_SCAN_BY_SERVER.clear();
+    }
+
     public enum SyncState {
         UNKNOWN,
         CHECKING,
@@ -105,7 +118,11 @@ public final class ServerSyncStatusCache {
     }
 
     public static boolean shouldRefresh(ServerData serverData) {
-        StatusSnapshot snapshot = STATUS_BY_IP.get(serverData.ip);
+        return shouldRefresh(serverData.ip);
+    }
+
+    static boolean shouldRefresh(String serverId) {
+        StatusSnapshot snapshot = STATUS_BY_IP.get(serverId);
         if (snapshot == null) {
             return true;
         }

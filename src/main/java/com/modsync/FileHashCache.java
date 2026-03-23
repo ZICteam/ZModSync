@@ -24,6 +24,7 @@ public final class FileHashCache {
 
     private static Map<String, Map<String, CacheEntry>> scopes = new HashMap<>();
     private static boolean loaded;
+    private static Path cachePathOverride;
 
     private FileHashCache() {
     }
@@ -61,7 +62,26 @@ public final class FileHashCache {
     }
 
     private static Path cachePath() {
+        if (cachePathOverride != null) {
+            return cachePathOverride;
+        }
         return FileUtils.configDir().resolve("modsync-hash-cache.json").normalize();
+    }
+
+    static void resetForTests() {
+        synchronized (LOCK) {
+            scopes = new HashMap<>();
+            loaded = false;
+            cachePathOverride = null;
+        }
+    }
+
+    static void overrideCachePathForTests(Path path) {
+        synchronized (LOCK) {
+            scopes = new HashMap<>();
+            loaded = false;
+            cachePathOverride = path == null ? null : path.toAbsolutePath().normalize();
+        }
     }
 
     public static final class ScopeSession implements AutoCloseable {

@@ -8,7 +8,9 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 public final class ManifestGenerator {
@@ -18,17 +20,29 @@ public final class ManifestGenerator {
     }
 
     public static ManifestData generateManifest() {
-        ManifestData data = new ManifestData();
-        data.setGeneratedAt(System.currentTimeMillis());
         Set<String> skipped = ConfigManager.skipFileExtensions();
+        Map<CategoryType, Path> roots = new EnumMap<>(CategoryType.class);
 
-        List<ManifestEntry> entries = new ArrayList<>();
         for (CategoryType category : CategoryType.values()) {
             if (!ConfigManager.isCategoryEnabled(category)) {
                 continue;
             }
+            roots.put(category, FileUtils.resolveServerSourceRoot(category));
+        }
 
-            Path root = FileUtils.resolveServerSourceRoot(category);
+        ManifestData data = generateManifest(roots, skipped, FileUtils.configDir().resolve("modsync-manifest.json").normalize());
+        LoggerUtils.info("Generated manifest with " + data.getEntries().size() + " entries");
+        return data;
+    }
+
+    static ManifestData generateManifest(Map<CategoryType, Path> roots, Set<String> skippedExtensions, Path manifestCopyPath) {
+        ManifestData data = new ManifestData();
+        data.setGeneratedAt(System.currentTimeMillis());
+
+        List<ManifestEntry> entries = new ArrayList<>();
+        for (Map.Entry<CategoryType, Path> rootEntry : roots.entrySet()) {
+            CategoryType category = rootEntry.getKey();
+            Path root = rootEntry.getValue();
             if (!Files.exists(root)) {
                 continue;
             }
@@ -37,7 +51,7 @@ public final class ManifestGenerator {
                 Files.walk(root)
                         .filter(Files::isRegularFile)
                         .filter(path -> shouldIncludeInManifest(category, path))
-                        .filter(path -> !FileUtils.isSkippedFile(path, skipped))
+                        .filter(path -> !FileUtils.isSkippedFile(path, skippedExtensions))
                         .forEach(path -> entries.add(createEntry(category, root, path, hashCache)));
             } catch (IOException exception) {
                 LoggerUtils.error("Failed generating manifest for " + category, exception);
@@ -45,8 +59,7 @@ public final class ManifestGenerator {
         }
 
         data.setEntries(entries);
-        writeManifestCopy(data);
-        LoggerUtils.info("Generated manifest with " + entries.size() + " entries");
+        writeManifestCopy(data, manifestCopyPath);
         return data;
     }
 
@@ -96,8 +109,7 @@ public final class ManifestGenerator {
         }
     }
 
-    private static void writeManifestCopy(ManifestData data) {
-        Path file = FileUtils.configDir().resolve("modsync-manifest.json").normalize();
+    private static void writeManifestCopy(ManifestData data, Path file) {
         try {
             FileUtils.ensureParentExists(file);
             Files.writeString(file, toJson(data), StandardCharsets.UTF_8);

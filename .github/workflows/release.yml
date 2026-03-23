@@ -1,19 +1,20 @@
-name: Build
+name: Release
 
 on:
   push:
-  pull_request:
+    tags:
+      - 'v*'
   workflow_dispatch:
 
 concurrency:
-  group: build-${{ github.workflow }}-${{ github.ref }}
+  group: release-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  build:
+  release:
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
@@ -31,22 +32,18 @@ jobs:
       - name: Make Gradle wrapper executable
         run: chmod +x ./gradlew ./scripts/run-release-smoke.sh ./scripts/verify-release-version.sh
 
-      - name: Run smoke checks
-        run: ./scripts/run-release-smoke.sh
+      - name: Run release smoke checks
+        run: ./scripts/run-release-smoke.sh "${GITHUB_REF}"
 
-      - name: Upload test reports
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: modsync-test-report
-          path: build/reports/tests/test/**
-          if-no-files-found: warn
+      - name: Render release notes from changelog
+        run: ./scripts/render-release-notes.sh "${GITHUB_REF}" build/release-notes.md
 
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
         with:
-          name: modsync-build
-          path: |
+          files: |
             build/libs/*.jar
             build/libs/*.jar.sha256
-          if-no-files-found: error
+            CHANGELOG.md
+          body_path: build/release-notes.md
+          generate_release_notes: true

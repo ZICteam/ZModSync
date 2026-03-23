@@ -1,12 +1,28 @@
 package com.modsync;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ManifestGeneratorTest {
+    @TempDir
+    Path tempDir;
+
+    @AfterEach
+    void tearDown() {
+        FileHashCache.resetForTests();
+    }
+
     @Test
     void manifestJsonRoundTripPreservesEntries() {
         ManifestData manifest = new ManifestData();
@@ -35,5 +51,61 @@ class ManifestGeneratorTest {
 
         assertEquals(List.of("MOD:mods/a.jar", "RESOURCEPACK:packs/ui.zip"),
                 restored.stream().map(ManifestEntry::getIdentityKey).toList());
+    }
+
+    @Test
+    void generateManifestBuildsEntriesAndWritesManifestCopy() throws Exception {
+        Path cachePath = tempDir.resolve("hash-cache.json");
+        Path manifestCopy = tempDir.resolve("generated/modsync-manifest.json");
+        Path modsRoot = tempDir.resolve("mods");
+        Path resourcepacksRoot = tempDir.resolve("sync_repo/resourcepacks");
+        Files.createDirectories(modsRoot.resolve("nested"));
+        Files.createDirectories(resourcepacksRoot.resolve("ui"));
+        Files.writeString(modsRoot.resolve("nested/core.jar"), "core-binary");
+        Files.writeString(resourcepacksRoot.resolve("ui/pack.zip"), "pack-binary");
+
+        Map<CategoryType, Path> roots = new EnumMap<>(CategoryType.class);
+        roots.put(CategoryType.MOD, modsRoot);
+        roots.put(CategoryType.RESOURCEPACK, resourcepacksRoot);
+
+        FileHashCache.overrideCachePathForTests(cachePath);
+        ManifestData manifest = ManifestGenerator.generateManifest(roots, Set.of(".log"), manifestCopy);
+
+        assertEquals(2, manifest.getEntries().size());
+        assertTrue(manifest.getGeneratedAt() > 0);
+        assertTrue(manifest.getEntries().stream().anyMatch(entry ->
+                entry.getCategory() == CategoryType.MOD
+                        && entry.getRelativePath().equals("nested/core.jar")
+                        && entry.getFileName().equals("core.jar")
+                        && entry.isRestartRequired()
+                        && entry.getSha256().matches("[0-9a-f]{64}")
+        ));
+        assertTrue(manifest.getEntries().stream().anyMatch(entry ->
+                entry.getCategory() == CategoryType.RESOURCEPACK
+                        && entry.getRelativePath().equals("ui/pack.zip")
+                        && !entry.isRestartRequired()
+        ));
+        assertTrue(Files.exists(manifestCopy));
+        assertTrue(Files.readString(manifestCopy).contains("\"relativePath\": \"nested/core.jar\""));
+    }
+
+    @Test
+    void generateManifestSkipsConfiguredExtensionsAndMissingRoots() throws Exception {
+        Path cachePath = tempDir.resolve("hash-cache.json");
+        Path manifestCopy = tempDir.resolve("generated/modsync-manifest.json");
+        Path modsRoot = tempDir.resolve("mods");
+        Files.createDirectories(modsRoot);
+        Files.writeString(modsRoot.resolve("keep.jar"), "jar");
+        Files.writeString(modsRoot.resolve("skip.LOG"), "log");
+
+        Map<CategoryType, Path> roots = new EnumMap<>(CategoryType.class);
+        roots.put(CategoryType.MOD, modsRoot);
+        roots.put(CategoryType.CONFIG, tempDir.resolve("missing-config"));
+
+        FileHashCache.overrideCachePathForTests(cachePath);
+        ManifestData manifest = ManifestGenerator.generateManifest(roots, Set.of(".log"), manifestCopy);
+
+        assertEquals(1, manifest.getEntries().size());
+        assertEquals("keep.jar", manifest.getEntries().get(0).getRelativePath());
     }
 }

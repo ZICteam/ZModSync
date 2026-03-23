@@ -16,15 +16,37 @@ public final class SyncComparator {
         }
 
         return manifestData.getEntries().stream()
-                .filter(serverEntry -> isMissingOrDifferent(serverEntry, localMap.get(serverEntry.getIdentityKey())))
+                .filter(serverEntry -> compare(serverEntry, localMap.get(serverEntry.getIdentityKey())).requiresDownload())
                 .collect(Collectors.toList());
     }
 
-    private static boolean isMissingOrDifferent(ManifestEntry serverEntry, ManifestEntry clientEntry) {
+    static ComparisonResult compare(ManifestEntry serverEntry, ManifestEntry clientEntry) {
         if (clientEntry == null) {
-            return true;
+            return ComparisonResult.MISSING;
         }
-        return clientEntry.getFileSize() != serverEntry.getFileSize()
-                || !clientEntry.getSha256().equalsIgnoreCase(serverEntry.getSha256());
+        if (clientEntry.getFileSize() != serverEntry.getFileSize()) {
+            return ComparisonResult.SIZE_CHANGED;
+        }
+        if (!clientEntry.getSha256().equalsIgnoreCase(serverEntry.getSha256())) {
+            return ComparisonResult.HASH_CHANGED;
+        }
+        return ComparisonResult.MATCHES;
+    }
+
+    enum ComparisonResult {
+        MATCHES(false),
+        MISSING(true),
+        SIZE_CHANGED(true),
+        HASH_CHANGED(true);
+
+        private final boolean requiresDownload;
+
+        ComparisonResult(boolean requiresDownload) {
+            this.requiresDownload = requiresDownload;
+        }
+
+        boolean requiresDownload() {
+            return requiresDownload;
+        }
     }
 }
