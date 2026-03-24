@@ -135,6 +135,7 @@ public final class NetworkHandler {
         if (comparisonResult.isEmpty()) {
             LoggerUtils.info("Client is already synchronized");
             SyncCleanupManager.saveManagedManifest(serverId, manifestData);
+            NetworkHandler.sendClientHello();
             return;
         }
 
