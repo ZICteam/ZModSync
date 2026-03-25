@@ -54,6 +54,242 @@ class ManifestGeneratorTest {
     }
 
     @Test
+    void manifestJsonRoundTripNormalizesNullManifestToEmptyData() {
+        ManifestData restored = ManifestGenerator.fromJson("null");
+
+        assertTrue(restored.getGeneratedAt() == 0L);
+        assertEquals(List.of(), restored.getEntries());
+    }
+
+    @Test
+    void manifestJsonRoundTripNormalizesNullEntriesToEmptyList() {
+        ManifestData restored = ManifestGenerator.fromJson("{\"generatedAt\":42,\"entries\":null}");
+
+        assertEquals(42L, restored.getGeneratedAt());
+        assertEquals(List.of(), restored.getEntries());
+    }
+
+    @Test
+    void manifestJsonRoundTripFiltersNullEntriesInsideManifest() {
+        ManifestData restored = ManifestGenerator.fromJson("""
+                {
+                  "generatedAt": 99,
+                  "entries": [
+                    null,
+                    {
+                      "category": "MOD",
+                      "relativePath": "mods/core.jar",
+                      "fileName": "core.jar",
+                      "fileSize": 100,
+                      "sha256": "abc",
+                      "required": true,
+                      "restartRequired": true,
+                      "downloadUrl": "https://example.invalid/core.jar"
+                    }
+                  ]
+                }
+                """);
+
+        assertEquals(99L, restored.getGeneratedAt());
+        assertEquals(List.of("MOD:mods/core.jar"),
+                restored.getEntries().stream().map(ManifestEntry::getIdentityKey).toList());
+    }
+
+    @Test
+    void entriesJsonRoundTripFiltersNullElements() {
+        List<ManifestEntry> restored = ManifestGenerator.entriesFromJson("""
+                [
+                  null,
+                  {
+                    "category": "CONFIG",
+                    "relativePath": "client/options.txt",
+                    "fileName": "options.txt",
+                    "fileSize": 200,
+                    "sha256": "def",
+                    "required": true,
+                    "restartRequired": false,
+                    "downloadUrl": ""
+                  }
+                ]
+                """);
+
+        assertEquals(List.of("CONFIG:client/options.txt"),
+                restored.stream().map(ManifestEntry::getIdentityKey).toList());
+    }
+
+    @Test
+    void manifestJsonRoundTripFiltersEntriesMissingCategoryOrRelativePath() {
+        ManifestData restored = ManifestGenerator.fromJson("""
+                {
+                  "generatedAt": 100,
+                  "entries": [
+                    {
+                      "category": null,
+                      "relativePath": "mods/missing-category.jar",
+                      "fileName": "missing-category.jar",
+                      "fileSize": 1,
+                      "sha256": "aaa",
+                      "required": true,
+                      "restartRequired": true,
+                      "downloadUrl": ""
+                    },
+                    {
+                      "category": "MOD",
+                      "relativePath": "   ",
+                      "fileName": "blank-path.jar",
+                      "fileSize": 1,
+                      "sha256": "bbb",
+                      "required": true,
+                      "restartRequired": true,
+                      "downloadUrl": ""
+                    },
+                    {
+                      "category": "MOD",
+                      "relativePath": "mods/valid.jar",
+                      "fileName": "valid.jar",
+                      "fileSize": 2,
+                      "sha256": "ccc",
+                      "required": true,
+                      "restartRequired": true,
+                      "downloadUrl": ""
+                    }
+                  ]
+                }
+                """);
+
+        assertEquals(100L, restored.getGeneratedAt());
+        assertEquals(List.of("MOD:mods/valid.jar"),
+                restored.getEntries().stream().map(ManifestEntry::getIdentityKey).toList());
+    }
+
+    @Test
+    void entriesJsonRoundTripFiltersEntriesMissingCategoryOrRelativePath() {
+        List<ManifestEntry> restored = ManifestGenerator.entriesFromJson("""
+                [
+                  {
+                    "category": null,
+                    "relativePath": "mods/missing-category.jar",
+                    "fileName": "missing-category.jar",
+                    "fileSize": 1,
+                    "sha256": "aaa",
+                    "required": true,
+                    "restartRequired": true,
+                    "downloadUrl": ""
+                  },
+                  {
+                    "category": "CONFIG",
+                    "relativePath": "",
+                    "fileName": "blank-path.txt",
+                    "fileSize": 1,
+                    "sha256": "bbb",
+                    "required": true,
+                    "restartRequired": false,
+                    "downloadUrl": ""
+                  },
+                  {
+                    "category": "CONFIG",
+                    "relativePath": "client/options.txt",
+                    "fileName": "options.txt",
+                    "fileSize": 200,
+                    "sha256": "def",
+                    "required": true,
+                    "restartRequired": false,
+                    "downloadUrl": ""
+                  }
+                ]
+                """);
+
+        assertEquals(List.of("CONFIG:client/options.txt"),
+                restored.stream().map(ManifestEntry::getIdentityKey).toList());
+    }
+
+    @Test
+    void manifestJsonRoundTripFiltersEntriesMissingSha256() {
+        ManifestData restored = ManifestGenerator.fromJson("""
+                {
+                  "generatedAt": 101,
+                  "entries": [
+                    {
+                      "category": "MOD",
+                      "relativePath": "mods/missing-hash.jar",
+                      "fileName": "missing-hash.jar",
+                      "fileSize": 1,
+                      "sha256": null,
+                      "required": true,
+                      "restartRequired": true,
+                      "downloadUrl": ""
+                    },
+                    {
+                      "category": "MOD",
+                      "relativePath": "mods/blank-hash.jar",
+                      "fileName": "blank-hash.jar",
+                      "fileSize": 1,
+                      "sha256": "   ",
+                      "required": true,
+                      "restartRequired": true,
+                      "downloadUrl": ""
+                    },
+                    {
+                      "category": "MOD",
+                      "relativePath": "mods/valid.jar",
+                      "fileName": "valid.jar",
+                      "fileSize": 2,
+                      "sha256": "ccc",
+                      "required": true,
+                      "restartRequired": true,
+                      "downloadUrl": ""
+                    }
+                  ]
+                }
+                """);
+
+        assertEquals(101L, restored.getGeneratedAt());
+        assertEquals(List.of("MOD:mods/valid.jar"),
+                restored.getEntries().stream().map(ManifestEntry::getIdentityKey).toList());
+    }
+
+    @Test
+    void entriesJsonRoundTripFiltersEntriesMissingSha256() {
+        List<ManifestEntry> restored = ManifestGenerator.entriesFromJson("""
+                [
+                  {
+                    "category": "CONFIG",
+                    "relativePath": "client/missing-hash.txt",
+                    "fileName": "missing-hash.txt",
+                    "fileSize": 1,
+                    "sha256": null,
+                    "required": true,
+                    "restartRequired": false,
+                    "downloadUrl": ""
+                  },
+                  {
+                    "category": "CONFIG",
+                    "relativePath": "client/blank-hash.txt",
+                    "fileName": "blank-hash.txt",
+                    "fileSize": 1,
+                    "sha256": " ",
+                    "required": true,
+                    "restartRequired": false,
+                    "downloadUrl": ""
+                  },
+                  {
+                    "category": "CONFIG",
+                    "relativePath": "client/options.txt",
+                    "fileName": "options.txt",
+                    "fileSize": 200,
+                    "sha256": "def",
+                    "required": true,
+                    "restartRequired": false,
+                    "downloadUrl": ""
+                  }
+                ]
+                """);
+
+        assertEquals(List.of("CONFIG:client/options.txt"),
+                restored.stream().map(ManifestEntry::getIdentityKey).toList());
+    }
+
+    @Test
     void generateManifestBuildsEntriesAndWritesManifestCopy() throws Exception {
         Path cachePath = tempDir.resolve("hash-cache.json");
         Path manifestCopy = tempDir.resolve("generated/modsync-manifest.json");

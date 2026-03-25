@@ -21,6 +21,15 @@ class ClientSyncContextTest {
     }
 
     @Test
+    void setCurrentServerHttpPortStoresOnlyPositiveValues() {
+        ClientSyncContext.setCurrentServerHttpPort(26590);
+        assertEquals(26590, ClientSyncContext.getCurrentServerHttpPort());
+
+        ClientSyncContext.setCurrentServerHttpPort(-1);
+        assertEquals(-1, ClientSyncContext.getCurrentServerHttpPort());
+    }
+
+    @Test
     void markAndConsumePreJoinReadyIsSingleUseForMatchingServer() {
         ClientSyncContext.markPreJoinReady("  play.example.net:25565  ");
 
@@ -41,10 +50,12 @@ class ClientSyncContextTest {
     void clearResetsBothCurrentAndPreJoinState() {
         ClientSyncContext.setCurrentServerId("play.example.net:25565");
         ClientSyncContext.markPreJoinReady("play.example.net:25565");
+        ClientSyncContext.setCurrentServerHttpPort(26590);
 
         ClientSyncContext.clear();
 
         assertEquals("", ClientSyncContext.getCurrentServerId());
+        assertEquals(-1, ClientSyncContext.getCurrentServerHttpPort());
         assertFalse(ClientSyncContext.consumePreJoinReady("play.example.net:25565"));
     }
 }

@@ -29,6 +29,7 @@ class ClientBootstrapTest {
         );
 
         assertTrue(plan.skipHandshake());
+        assertFalse(plan.acknowledgeOnly());
         assertFalse(plan.startHandshake());
         assertEquals("Skipping ModSync handshake in singleplayer/local session", plan.reason());
         assertEquals(0, consumeCalls.get());
@@ -48,13 +49,14 @@ class ClientBootstrapTest {
         );
 
         assertTrue(plan.skipHandshake());
+        assertFalse(plan.acknowledgeOnly());
         assertFalse(plan.startHandshake());
         assertEquals("Skipping ModSync handshake in singleplayer/local session", plan.reason());
         assertEquals(0, consumeCalls.get());
     }
 
     @Test
-    void buildPostLoginSyncPlanSkipsDuplicateHandshakeAfterPreJoinReady() {
+    void buildPostLoginSyncPlanAcknowledgesServerAfterPreJoinReady() {
         ClientSyncContext.markPreJoinReady("  play.example.net:25565  ");
 
         ClientBootstrap.PostLoginSyncPlan plan = ClientBootstrap.buildPostLoginSyncPlan(
@@ -63,9 +65,10 @@ class ClientBootstrapTest {
                 ClientSyncContext::consumePreJoinReady
         );
 
-        assertTrue(plan.skipHandshake());
+        assertFalse(plan.skipHandshake());
+        assertTrue(plan.acknowledgeOnly());
         assertFalse(plan.startHandshake());
-        assertEquals("Skipping duplicate post-login handshake because pre-join sync already completed", plan.reason());
+        assertEquals("Sending ModSync handshake acknowledgement after pre-join sync", plan.reason());
         assertFalse(ClientSyncContext.consumePreJoinReady("play.example.net:25565"));
     }
 
@@ -84,6 +87,7 @@ class ClientBootstrapTest {
         );
 
         assertFalse(plan.skipHandshake());
+        assertFalse(plan.acknowledgeOnly());
         assertTrue(plan.startHandshake());
         assertEquals("Client connection established, starting sync handshake", plan.reason());
         assertEquals(1, consumeCalls.get());

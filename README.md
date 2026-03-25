@@ -2,7 +2,7 @@
 
 ModSync is a universal Forge 1.20.1 mod that lets a server distribute mods and resource files to connecting clients while Minecraft is running.
 
-Current mod version: `1.0.66`
+Current mod version: `1.0.89`
 
 ## Requirements
 
@@ -47,6 +47,23 @@ The manifest-fetch path is now also covered end-to-end from `serverAddress` plus
 `ServerSyncStatusCache` now also has direct coverage for local scan caching and invalidation, which helps protect the pre-join flow from unnecessary rescans and stale cache reuse.
 `PreJoinSyncManager` now also has direct orchestration coverage for deciding whether sync can continue immediately, requires downloads first, or should avoid auto-continuation when connect-after-sync is disabled.
 `ClientBootstrap` now also has direct orchestration coverage for the post-login branch, including local-session skipping, duplicate-handshake suppression after pre-join sync, and the regular multiplayer handshake path.
+HTTP file delivery now percent-encodes relative paths, so downloads with spaces, `+`, `%`, and similar URL-sensitive characters in file names work correctly through both manifest-delivery paths.
+The embedded HTTP file server now also has direct coverage for approved-entry resolution on encoded paths, which helps protect that new filename fix from regressions.
+The packet-based handshake path now also has direct coverage for encoded download URLs and `start-download` selection rules, so both delivery paths are checked against the same filename and comparison behavior.
+That handshake coverage now also includes the `start-download` decision plan itself, so “already synchronized”, “download required”, and “manifest missing fallback” behavior are all locked in explicitly.
+The server-side packet response path is now also covered as a single unit, so manifest URL encoding and required-download calculation stay aligned when the client sends its file list.
+That same packet path now also has explicit fallback coverage for the “manifest cache is not ready yet” case, so the server normalizes to an empty manifest before answering instead of relying on an inline branch.
+A mini packet-handshake integration test now also ties the server response and client download-decision planners together, so encoded download URLs and no-download cases are checked across the full non-Forge round trip.
+That packet coverage now also goes through chunk splitting and reassembly for long encoded file names, which protects the payload path used by real packet transport.
+The mini packet-handshake integration layer now also covers the empty-manifest-cache fallback, so the client-side no-download path is checked even when the server cache is not ready yet.
+Chunked packet coverage now also checks that a stale `serverSuggested` payload does not override a matching chunked manifest on the client side.
+Chunk reassembly itself is now stricter too: invalid order and mismatched chunk-count sequences are discarded instead of being merged into corrupted payloads.
+Manifest JSON parsing is now also normalized defensively, so `null` manifests or `entries: null` payloads collapse to empty manifest data instead of leaking `null` deeper into the sync flow.
+That normalization now also filters out `null` entries inside manifest payloads and entry arrays before later sync stages consume them.
+Malformed entries without a category or usable relative path are now filtered out too, which protects several runtime paths that assume `getIdentityKey()` is safe to call.
+Entries without a usable SHA-256 are now filtered out as well, which avoids malformed payloads reaching comparison and post-download verification logic.
+The fallback `serverSuggested` path is now hardened too: entries without usable download metadata are discarded before the client decides to start downloads.
+`ManifestData` now also protects its own `entries` list against `null` assignment and accidental outside mutation, which makes the manifest container itself more stable across runtime paths.
 Version tags like `v1.0.17` can now trigger a GitHub Release workflow that runs the shared smoke helper and publishes the built jar.
 Release notes are now rendered from the top matching changelog section before the GitHub Release is created.
 The release workflow now also verifies that the git tag, `mod_version`, and the top changelog entry all describe the same version before publishing.
@@ -54,6 +71,12 @@ The Gradle build script has also been cleaned up toward more current task/publis
 The Gradle test-framework deprecation has been addressed by using explicit JUnit Jupiter API, engine, and platform launcher dependencies, and the local `build --warning-mode all` path is currently clean.
 The Forge 47.4.18 compile path is now also clean of the earlier removal warnings after updating `ResourceLocation` creation and config registration to the newer API-safe patterns.
 Manifest HTTP fallback resolution is now covered by unit tests for direct URLs, configured public base URLs, and IPv6 hosts.
+Integrated/local server sessions no longer trigger the dedicated-server ModSync handshake timeout path, which avoids false "missing ModSync/Forge" disconnects during local play or local diagnostics.
+Default network tolerance is also higher now: pre-join manifest fetches and HTTP file downloads wait longer before timing out, which helps large remote modpacks sync more reliably on slower hosts.
+If a manifest still contains a dead `public_http_base_url`, the client now retries downloads against the selected server host plus the discovered hidden ModSync HTTP port before giving up.
+After successful pre-join sync on a dedicated server, the client now still sends a lightweight ModSync acknowledgement on login so the server does not kick an already synchronized player for a missing handshake timeout.
+ModSync can now also update its own client jar: the new `modsync` build is staged outside `mods/` during sync and then swapped into place by a tiny post-exit updater after Minecraft fully stops.
+Dedicated-server handshake tracking now also tolerates out-of-order arrival between the first client `hello` and pending registration, which avoids intermittent late kicks for already connected players.
 
 ## Server Repository Layout
 
@@ -124,6 +147,7 @@ Detailed deployment examples are documented in `docs/Server_Setup_RU.md`.
 - Files are downloaded through temporary files before replacement when enabled.
 - Hashes are verified with SHA-256.
 - Path traversal is blocked on both manifest generation and HTTP serving.
+- Download URLs now safely encode file-path segments before transport and decode them again on the embedded HTTP server.
 - Cleanup only removes files that still match the last ModSync-managed version, which reduces the risk of deleting locally replaced files.
 - The mod logs operational events to `logs/modsync.log` when enabled.
 - Network and download failures are surfaced both in the log panel and directly on the sync progress screen.

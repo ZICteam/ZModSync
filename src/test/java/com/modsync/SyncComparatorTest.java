@@ -74,6 +74,41 @@ class SyncComparatorTest {
         assertEquals(List.of("MOD:shared/file.dat"), result.stream().map(ManifestEntry::getIdentityKey).toList());
     }
 
+    @Test
+    void findMissingOrOutdatedIgnoresMalformedLocalEntries() {
+        ManifestEntry validServer = entry(CategoryType.MOD, "mods/a.jar", 10L, "aaa");
+        ManifestEntry malformedLocal = entry(CategoryType.MOD, "mods/bad.jar", 10L, null);
+
+        ManifestData manifest = new ManifestData();
+        manifest.setEntries(List.of(validServer));
+
+        List<ManifestEntry> result = SyncComparator.findMissingOrOutdated(List.of(malformedLocal), manifest);
+
+        assertEquals(List.of("MOD:mods/a.jar"), result.stream().map(ManifestEntry::getIdentityKey).toList());
+    }
+
+    @Test
+    void findMissingOrOutdatedIgnoresMalformedServerEntries() {
+        ManifestData manifest = new ManifestData();
+        manifest.setEntries(List.of(
+                entry(CategoryType.MOD, "mods/a.jar", 10L, "aaa"),
+                entry(CategoryType.MOD, "mods/bad.jar", 10L, ""),
+                entry(null, "mods/no-category.jar", 10L, "bbb")
+        ));
+
+        List<ManifestEntry> result = SyncComparator.findMissingOrOutdated(List.of(), manifest);
+
+        assertEquals(List.of("MOD:mods/a.jar"), result.stream().map(ManifestEntry::getIdentityKey).toList());
+    }
+
+    @Test
+    void compareTreatsMalformedServerEntryAsNoDownload() {
+        ManifestEntry client = entry(CategoryType.MOD, "mods/a.jar", 10L, "aaa");
+        ManifestEntry malformedServer = entry(CategoryType.MOD, "mods/a.jar", 10L, null);
+
+        assertEquals(SyncComparator.ComparisonResult.MATCHES, SyncComparator.compare(malformedServer, client));
+    }
+
     private static ManifestEntry entry(CategoryType category, String relativePath, long fileSize, String sha256) {
         return new ManifestEntry(category, relativePath, PathName.fileName(relativePath), fileSize, sha256, true, false, "");
     }

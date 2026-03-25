@@ -3,6 +3,7 @@ package com.modsync;
 public final class ClientSyncContext {
     private static volatile String currentServerId = "";
     private static volatile String preJoinReadyServerId = "";
+    private static volatile int currentServerHttpPort = -1;
 
     private ClientSyncContext() {
     }
@@ -13,6 +14,14 @@ public final class ClientSyncContext {
 
     public static String getCurrentServerId() {
         return currentServerId;
+    }
+
+    public static void setCurrentServerHttpPort(int serverHttpPort) {
+        currentServerHttpPort = serverHttpPort > 0 ? serverHttpPort : -1;
+    }
+
+    public static int getCurrentServerHttpPort() {
+        return currentServerHttpPort;
     }
 
     public static void markPreJoinReady(String serverId) {
@@ -31,5 +40,6 @@ public final class ClientSyncContext {
     public static void clear() {
         currentServerId = "";
         preJoinReadyServerId = "";
+        currentServerHttpPort = -1;
     }
 }

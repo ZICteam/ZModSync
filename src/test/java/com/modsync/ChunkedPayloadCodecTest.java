@@ -40,4 +40,24 @@ class ChunkedPayloadCodecTest {
         assertNull(accumulator.accept(0, 2, "fresh-"));
         assertEquals("fresh-payload", accumulator.accept(1, 2, "payload"));
     }
+
+    @Test
+    void accumulatorRejectsOutOfOrderChunkSequence() {
+        ChunkedPayloadCodec.ChunkAccumulator accumulator = new ChunkedPayloadCodec.ChunkAccumulator();
+
+        assertNull(accumulator.accept(0, 3, "abc"));
+        assertNull(accumulator.accept(2, 3, "ghi"));
+        assertNull(accumulator.accept(0, 2, "fresh-"));
+        assertEquals("fresh-payload", accumulator.accept(1, 2, "payload"));
+    }
+
+    @Test
+    void accumulatorRejectsMismatchedTotalChunkCount() {
+        ChunkedPayloadCodec.ChunkAccumulator accumulator = new ChunkedPayloadCodec.ChunkAccumulator();
+
+        assertNull(accumulator.accept(0, 3, "abc"));
+        assertNull(accumulator.accept(1, 2, "def"));
+        assertNull(accumulator.accept(0, 2, "fresh-"));
+        assertEquals("fresh-payload", accumulator.accept(1, 2, "payload"));
+    }
 }

@@ -15,17 +15,17 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 
 public final class NetworkHandler {
     private static final String PROTOCOL_VERSION = "1";
     private static final int CHUNK_SIZE = 12000;
-    private static final int HANDSHAKE_TIMEOUT_TICKS = 100;
-    private static final String REQUIRED_MOD_KICK_MESSAGE = "Missing required client sync mod. Install Forge and ModSync to join this server.";
+    private static final int HANDSHAKE_TIMEOUT_TICKS = 20 * 30;
+    private static final String REQUIRED_MOD_KICK_MESSAGE =
+            "ModSync handshake timed out. Install/update ModSync on the client and try joining again.";
     private static final Map<UUID, ChunkedPayloadCodec.ChunkAccumulator> CLIENT_FILE_CHUNKS = new HashMap<>();
     private static final ChunkedPayloadCodec.ChunkAccumulator SERVER_MANIFEST_CHUNKS = new ChunkedPayloadCodec.ChunkAccumulator();
     private static final ChunkedPayloadCodec.ChunkAccumulator START_DOWNLOAD_CHUNKS = new ChunkedPayloadCodec.ChunkAccumulator();
-    private static final Map<UUID, Integer> PENDING_HANDSHAKES = new ConcurrentHashMap<>();
+    private static final HandshakeTracker HANDSHAKE_TRACKER = new HandshakeTracker();
 
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             ModSync.id("main"),
@@ -64,7 +64,7 @@ public final class NetworkHandler {
             synchronized (CLIENT_FILE_CHUNKS) {
                 CLIENT_FILE_CHUNKS.remove(player.getUUID());
             }
-            PENDING_HANDSHAKES.remove(player.getUUID());
+            HANDSHAKE_TRACKER.acknowledge(player.getUUID());
             LoggerUtils.info("Client connected for sync handshake: " + player.getGameProfile().getName());
         }
     }
@@ -91,19 +91,18 @@ public final class NetworkHandler {
         ManifestData manifest = ModSync.getLastManifest();
         if (manifest == null) {
             LoggerUtils.warn("Sync handshake requested before cached manifest was available");
-            manifest = new ManifestData();
-            manifest.setGeneratedAt(System.currentTimeMillis());
-            manifest.setEntries(List.of());
         }
+        manifest = HandshakeManifestPlanner.ensureServerManifest(manifest, System.currentTimeMillis());
 
         String baseUrl = resolveBaseUrl(player);
-        ManifestData outbound = attachDownloadUrls(manifest, baseUrl);
-        List<ManifestEntry> required = SyncComparator.findMissingOrOutdated(clientEntries, outbound);
+        HandshakeManifestPlanner.ServerHandshakeResponse response =
+                HandshakeManifestPlanner.buildServerHandshakeResponse(clientEntries, manifest, baseUrl);
 
-        LoggerUtils.info("File comparison for " + player.getGameProfile().getName() + " found " + required.size() + " downloads");
+        LoggerUtils.info("File comparison for " + player.getGameProfile().getName() + " found "
+                + response.requiredEntries().size() + " downloads");
 
-        sendChunkedToPlayer(player, ManifestGenerator.toJson(outbound), ChunkTarget.MANIFEST);
-        sendChunkedToPlayer(player, ManifestGenerator.entriesToJson(required), ChunkTarget.START_DOWNLOAD);
+        sendChunkedToPlayer(player, ManifestGenerator.toJson(response.outboundManifest()), ChunkTarget.MANIFEST);
+        sendChunkedToPlayer(player, ManifestGenerator.entriesToJson(response.requiredEntries()), ChunkTarget.START_DOWNLOAD);
     }
 
     static void handleServerManifest(PacketServerManifest packet) {
@@ -128,21 +127,25 @@ public final class NetworkHandler {
         if (manifestData != null) {
             SyncCleanupManager.cleanupObsoleteManagedFiles(serverId, manifestData, localEntries);
         }
-        List<ManifestEntry> comparisonResult = manifestData == null
-                ? serverSuggested
-                : SyncComparator.findMissingOrOutdated(localEntries, manifestData);
+        HandshakeManifestPlanner.StartDownloadPlan plan =
+                HandshakeManifestPlanner.buildStartDownloadPlan(serverSuggested, manifestData, localEntries);
 
-        if (comparisonResult.isEmpty()) {
+        if (plan.alreadySynchronized()) {
             LoggerUtils.info("Client is already synchronized");
-            SyncCleanupManager.saveManagedManifest(serverId, manifestData);
-            NetworkHandler.sendClientHello();
+            if (plan.saveManagedManifest()) {
+                SyncCleanupManager.saveManagedManifest(serverId, manifestData);
+            }
             return;
         }
 
-        LoggerUtils.info("Client starting download of " + comparisonResult.size() + " files");
+        LoggerUtils.info("Client starting download of " + plan.requiredEntries().size() + " files");
         ensureProgressScreenVisible();
-        DownloadManager.getInstance().startDownloads(comparisonResult,
-                () -> SyncCleanupManager.saveManagedManifest(serverId, manifestData));
+        DownloadManager.getInstance().startDownloads(plan.requiredEntries(),
+                () -> {
+                    if (plan.saveManagedManifest()) {
+                        SyncCleanupManager.saveManagedManifest(serverId, manifestData);
+                    }
+                });
     }
 
     private static void ensureProgressScreenVisible() {
@@ -158,29 +161,29 @@ public final class NetworkHandler {
     }
 
     public static void registerPendingHandshake(ServerPlayer player) {
-        if (player == null) {
+        if (player == null || !requiresClientHandshake(player)) {
             return;
         }
-        PENDING_HANDSHAKES.put(player.getUUID(), HANDSHAKE_TIMEOUT_TICKS);
+        HANDSHAKE_TRACKER.registerPending(player.getUUID(), HANDSHAKE_TIMEOUT_TICKS);
     }
 
     public static void clearPendingHandshake(ServerPlayer player) {
         if (player == null) {
             return;
         }
-        PENDING_HANDSHAKES.remove(player.getUUID());
+        HANDSHAKE_TRACKER.clear(player.getUUID());
         synchronized (CLIENT_FILE_CHUNKS) {
             CLIENT_FILE_CHUNKS.remove(player.getUUID());
         }
     }
 
     public static void tickPendingHandshakes(net.minecraft.server.MinecraftServer server) {
-        if (PENDING_HANDSHAKES.isEmpty()) {
+        if (HANDSHAKE_TRACKER.pendingView().isEmpty()) {
             return;
         }
 
         List<UUID> expired = new ArrayList<>();
-        PENDING_HANDSHAKES.replaceAll((uuid, ticksLeft) -> {
+        HANDSHAKE_TRACKER.pendingView().replaceAll((uuid, ticksLeft) -> {
             int next = ticksLeft - 1;
             if (next <= 0) {
                 expired.add(uuid);
@@ -189,7 +192,7 @@ public final class NetworkHandler {
         });
 
         for (UUID uuid : expired) {
-            PENDING_HANDSHAKES.remove(uuid);
+            HANDSHAKE_TRACKER.pendingView().remove(uuid);
             ServerPlayer player = server.getPlayerList().getPlayer(uuid);
             if (player != null) {
                 LoggerUtils.warn("Disconnecting player without ModSync handshake: " + player.getGameProfile().getName());
@@ -198,24 +201,18 @@ public final class NetworkHandler {
         }
     }
 
-    private static ManifestData attachDownloadUrls(ManifestData manifestData, String baseUrl) {
-        ManifestData copy = new ManifestData();
-        copy.setGeneratedAt(manifestData.getGeneratedAt());
-        List<ManifestEntry> entries = manifestData.getEntries().stream().map(entry -> {
-            ManifestEntry cloned = entry.copy();
-            cloned.setDownloadUrl(baseUrl + "/files/" + entry.getCategory().getHttpSegment() + "/" + entry.getRelativePath());
-            return cloned;
-        }).toList();
-        copy.setEntries(entries);
-        return copy;
-    }
-
     private static String resolveBaseUrl(ServerPlayer player) {
         String host = player == null ? "127.0.0.1" : player.server.getLocalIp();
         if (host == null || host.isBlank()) {
             host = "127.0.0.1";
         }
         return ServerManifestHttpHandler.resolvePublicBaseUrl(host);
+    }
+
+    static boolean requiresClientHandshake(ServerPlayer player) {
+        return player != null
+                && player.server != null
+                && HandshakePolicy.requiresClientHandshake(player.server.isDedicatedServer());
     }
 
     private static void sendChunkedToServer(String json) {

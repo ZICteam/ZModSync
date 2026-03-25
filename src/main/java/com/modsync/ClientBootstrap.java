@@ -9,7 +9,10 @@ import net.minecraftforge.client.event.ClientPlayerNetworkEvent;
 import java.util.List;
 
 public final class ClientBootstrap {
-    record PostLoginSyncPlan(boolean skipHandshake, boolean startHandshake, String reason) {
+    record PostLoginSyncPlan(boolean skipHandshake,
+                             boolean acknowledgeOnly,
+                             boolean startHandshake,
+                             String reason) {
     }
 
     private static boolean initialized;
@@ -50,6 +53,11 @@ public final class ClientBootstrap {
             }
 
             ClientSyncContext.setCurrentServerId(serverId);
+            if (plan.acknowledgeOnly()) {
+                LoggerUtils.info(plan.reason());
+                NetworkHandler.sendClientHello();
+                return;
+            }
             if (plan.startHandshake()) {
                 LoggerUtils.info("Client connection established, starting sync handshake");
                 NetworkHandler.sendClientHello();
@@ -77,12 +85,12 @@ public final class ClientBootstrap {
                                                     java.util.function.Predicate<String> preJoinReadyConsumer) {
         String normalizedServerId = serverId == null ? "" : serverId.trim();
         if (singleplayerSession || normalizedServerId.isEmpty()) {
-            return new PostLoginSyncPlan(true, false, "Skipping ModSync handshake in singleplayer/local session");
+            return new PostLoginSyncPlan(true, false, false, "Skipping ModSync handshake in singleplayer/local session");
         }
         if (preJoinReadyConsumer.test(normalizedServerId)) {
-            return new PostLoginSyncPlan(true, false,
-                    "Skipping duplicate post-login handshake because pre-join sync already completed");
+            return new PostLoginSyncPlan(false, true, false,
+                    "Sending ModSync handshake acknowledgement after pre-join sync");
         }
-        return new PostLoginSyncPlan(false, true, "Client connection established, starting sync handshake");
+        return new PostLoginSyncPlan(false, false, true, "Client connection established, starting sync handshake");
     }
 }

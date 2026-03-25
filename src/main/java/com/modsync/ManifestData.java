@@ -16,10 +16,13 @@ public class ManifestData {
     }
 
     public List<ManifestEntry> getEntries() {
+        if (entries == null) {
+            entries = new ArrayList<>();
+        }
         return entries;
     }
 
     public void setEntries(List<ManifestEntry> entries) {
-        this.entries = entries;
+        this.entries = entries == null ? new ArrayList<>() : new ArrayList<>(entries);
     }
 }

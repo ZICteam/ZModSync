@@ -68,4 +68,31 @@ class ManifestUrlResolverTest {
                 ManifestUrlResolver.buildManifestCandidateUrls("mc.example.com", 8080, 8080)
         );
     }
+
+    @Test
+    void buildDownloadCandidateUrlsAddsServerHostFallbackForDeadPublicBaseUrl() {
+        ManifestEntry entry = new ManifestEntry(
+                CategoryType.MOD,
+                "mods/example.jar",
+                "example.jar",
+                1L,
+                "abc",
+                true,
+                true,
+                "http://62.221.122.64:26590/files/mod/mods/example.jar"
+        );
+
+        assertEquals(
+                List.of(
+                        "http://62.221.122.64:26590/files/mod/mods/example.jar",
+                        "http://95.163.234.85:26590/files/mod/mods/example.jar"
+                ),
+                ManifestUrlResolver.buildDownloadCandidateUrls(
+                        entry,
+                        entry.getDownloadUrl(),
+                        "95.163.234.85:26683",
+                        26590
+                )
+        );
+    }
 }

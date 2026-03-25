@@ -1,9 +1,13 @@
 package com.modsync;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.net.URI;
+import java.net.URISyntaxException;
 
 final class ManifestUrlResolver {
     private ManifestUrlResolver() {
@@ -62,6 +66,52 @@ final class ManifestUrlResolver {
         urls.add("https://" + normalizedHost + "/manifest");
         urls.add("http://" + normalizedHost + "/manifest");
         return new ArrayList<>(urls);
+    }
+
+    static List<String> buildDownloadCandidateUrls(ManifestEntry entry,
+                                                   String primaryDownloadUrl,
+                                                   String serverAddress,
+                                                   int discoveredPort) {
+        Map<String, Boolean> urls = new LinkedHashMap<>();
+        addCandidate(urls, primaryDownloadUrl);
+
+        String host = extractHost(serverAddress);
+        if (!host.isBlank()) {
+            URI primaryUri = parseUri(primaryDownloadUrl);
+            if (primaryUri != null && primaryUri.getScheme() != null && primaryUri.getRawPath() != null) {
+                int port = primaryUri.getPort();
+                if (port > 0) {
+                    addCandidate(urls, primaryUri.getScheme() + "://" + normalizeHost(host) + ":" + port + primaryUri.getRawPath());
+                }
+            }
+
+            if (discoveredPort > 0 && entry != null && entry.getCategory() != null
+                    && entry.getRelativePath() != null && !entry.getRelativePath().isBlank()) {
+                addCandidate(urls,
+                        "http://" + normalizeHost(host) + ":" + discoveredPort + "/files/"
+                                + entry.getCategory().getHttpSegment() + "/"
+                                + HttpPathCodec.encodeRelativePath(entry.getRelativePath()));
+            }
+        }
+
+        return new ArrayList<>(urls.keySet());
+    }
+
+    private static URI parseUri(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        try {
+            return new URI(value);
+        } catch (URISyntaxException ignored) {
+            return null;
+        }
+    }
+
+    private static void addCandidate(Map<String, Boolean> urls, String candidate) {
+        if (candidate != null && !candidate.isBlank()) {
+            urls.put(candidate, Boolean.TRUE);
+        }
     }
 
     static String stripTrailingSlash(String value) {

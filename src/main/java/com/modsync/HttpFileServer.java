@@ -63,6 +63,23 @@ public final class HttpFileServer {
         exchange.close();
     }
 
+    static ManifestEntry resolveApprovedEntry(String rawPath, Map<String, ManifestEntry> approvedEntries) {
+        String prefix = "/files/";
+        if (rawPath == null || !rawPath.startsWith(prefix)) {
+            return null;
+        }
+
+        String subPath = rawPath.substring(prefix.length());
+        int slashIndex = subPath.indexOf('/');
+        if (slashIndex <= 0) {
+            throw new IllegalArgumentException("Malformed file request path: " + rawPath);
+        }
+
+        CategoryType category = CategoryType.fromHttpSegment(subPath.substring(0, slashIndex));
+        String relativePath = HttpPathCodec.decodeRelativePath(subPath.substring(slashIndex + 1));
+        return approvedEntries.get(category.name() + ":" + relativePath);
+    }
+
     private final class FileHandler implements HttpHandler {
         @Override
         public void handle(HttpExchange exchange) throws IOException {
@@ -71,30 +88,23 @@ public final class HttpFileServer {
                 return;
             }
 
-            String path = exchange.getRequestURI().getPath();
-            String prefix = "/files/";
-            if (!path.startsWith(prefix)) {
+            String path = exchange.getRequestURI().getRawPath();
+            if (path == null || !path.startsWith("/files/")) {
                 respond(exchange, 404);
                 return;
             }
 
-            String subPath = path.substring(prefix.length());
-            int slashIndex = subPath.indexOf('/');
-            if (slashIndex <= 0) {
-                respond(exchange, 400);
-                return;
-            }
-
             try {
-                CategoryType category = CategoryType.fromHttpSegment(subPath.substring(0, slashIndex));
-                String relativePath = subPath.substring(slashIndex + 1);
-                ManifestEntry approved = approvedEntries.get(category.name() + ":" + relativePath);
+                ManifestEntry approved = resolveApprovedEntry(path, approvedEntries);
                 if (approved == null) {
                     respond(exchange, 404);
                     return;
                 }
 
-                Path file = FileUtils.resolveSafeChild(FileUtils.resolveServerSourceRoot(category), approved.getRelativePath());
+                Path file = FileUtils.resolveSafeChild(
+                        FileUtils.resolveServerSourceRoot(approved.getCategory()),
+                        approved.getRelativePath()
+                );
                 if (!Files.exists(file)) {
                     respond(exchange, 404);
                     return;

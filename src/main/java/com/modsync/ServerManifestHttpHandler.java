@@ -28,7 +28,8 @@ public final class ServerManifestHttpHandler {
 
         List<ManifestEntry> entries = source.getEntries().stream().map(entry -> {
             ManifestEntry copy = entry.copy();
-            copy.setDownloadUrl(publicBaseUrl + "/files/" + entry.getCategory().getHttpSegment() + "/" + entry.getRelativePath());
+            copy.setDownloadUrl(publicBaseUrl + "/files/" + entry.getCategory().getHttpSegment() + "/"
+                    + HttpPathCodec.encodeRelativePath(entry.getRelativePath()));
             return copy;
         }).toList();
         publicManifest.setEntries(entries);
@@ -44,7 +45,7 @@ public final class ServerManifestHttpHandler {
     }
 
     public static ManifestData fetchManifest(String serverAddress, int discoveredPort) throws IOException {
-        return fetchManifest(serverAddress, discoveredPort, 5_000, 15_000);
+        return fetchManifest(serverAddress, discoveredPort, 10_000, 30_000);
     }
 
     public static ManifestData fetchManifest(String serverAddress, int discoveredPort, int connectTimeoutMs, int readTimeoutMs) throws IOException {

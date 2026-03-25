@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 public final class ManifestGenerator {
@@ -68,7 +69,7 @@ public final class ManifestGenerator {
     }
 
     public static ManifestData fromJson(String json) {
-        return GSON.fromJson(json, ManifestData.class);
+        return normalizeManifestData(GSON.fromJson(json, ManifestData.class));
     }
 
     public static List<ManifestEntry> entriesFromJson(String json) {
@@ -76,7 +77,9 @@ public final class ManifestGenerator {
         List<ManifestEntry> list = new ArrayList<>();
         if (entries != null) {
             for (ManifestEntry entry : entries) {
-                list.add(entry);
+                if (isUsableEntry(entry)) {
+                    list.add(entry);
+                }
             }
         }
         return list;
@@ -84,6 +87,27 @@ public final class ManifestGenerator {
 
     public static String entriesToJson(List<ManifestEntry> entries) {
         return GSON.toJson(entries);
+    }
+
+    static ManifestData normalizeManifestData(ManifestData data) {
+        ManifestData normalized = data == null ? new ManifestData() : data;
+        if (normalized.getEntries() == null) {
+            normalized.setEntries(new ArrayList<>());
+        } else {
+            normalized.setEntries(normalized.getEntries().stream()
+                    .filter(ManifestGenerator::isUsableEntry)
+                    .toList());
+        }
+        return normalized;
+    }
+
+    private static boolean isUsableEntry(ManifestEntry entry) {
+        return entry != null
+                && entry.getCategory() != null
+                && entry.getRelativePath() != null
+                && !entry.getRelativePath().isBlank()
+                && entry.getSha256() != null
+                && !entry.getSha256().isBlank();
     }
 
     private static boolean shouldIncludeInManifest(CategoryType category, Path file) {

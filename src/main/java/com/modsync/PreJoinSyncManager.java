@@ -33,6 +33,7 @@ public final class PreJoinSyncManager {
             try {
                 LoggerUtils.info("Requesting manifest over HTTP");
                 int discoveredPort = MotdMetadataCodec.extractHttpPort(serverData);
+                ClientSyncContext.setCurrentServerHttpPort(discoveredPort);
                 if (discoveredPort > 0) {
                     LoggerUtils.info("Discovered hidden ModSync HTTP port from MOTD: " + discoveredPort);
                 }

@@ -20,6 +20,8 @@ import java.util.function.Function;
 
 public final class DownloadManager {
     private static final DownloadManager INSTANCE = new DownloadManager();
+    private static final int DOWNLOAD_CONNECT_TIMEOUT_MS = 20_000;
+    private static final int DOWNLOAD_READ_TIMEOUT_MS = 120_000;
 
     private volatile ExecutorService executorService;
     private volatile int totalTasks;
@@ -81,10 +83,13 @@ public final class DownloadManager {
 
         for (ManifestEntry entry : entries) {
             LoggerUtils.info("Queued: " + entry.getCategory().name() + " / " + entry.getRelativePath());
-            DownloadTask task = new DownloadTask(entry, targetResolver.apply(entry));
+            Path defaultTarget = targetResolver.apply(entry);
+            SelfUpdateCoordinator.SelfUpdatePlan selfUpdatePlan = SelfUpdateCoordinator.planForEntry(entry, defaultTarget);
+            DownloadTask task = new DownloadTask(entry, selfUpdatePlan.downloadTargetPath());
 
             futures.add(CompletableFuture.runAsync(() -> {
                 if (downloadWithRetry(task, retryCount, verifyHashAfterDownload, deleteInvalidFiles, useTempFiles)) {
+                    SelfUpdateCoordinator.registerDownloadedUpdate(selfUpdatePlan);
                     if (entry.isRestartRequired()) {
                         restartRequired.set(true);
                         RestartState.recordDownloaded(entry);
@@ -137,39 +142,48 @@ public final class DownloadManager {
                                       boolean deleteInvalidFiles,
                                       boolean useTempFiles) {
         Exception lastFailure = null;
+        List<String> candidateUrls = ManifestUrlResolver.buildDownloadCandidateUrls(
+                task.getEntry(),
+                task.getEntry().getDownloadUrl(),
+                ClientSyncContext.getCurrentServerId(),
+                ClientSyncContext.getCurrentServerHttpPort()
+        );
         for (int i = 0; i <= retryCount; i++) {
             task.incrementAttempts();
-            try {
-                download(task, verifyHashAfterDownload, deleteInvalidFiles, useTempFiles);
-                task.markCompleted();
-                LoggerUtils.info("Downloaded " + task.getEntry().getRelativePath());
-                return true;
-            } catch (Exception exception) {
-                lastFailure = exception;
-                LoggerUtils.warn("Download attempt " + task.getAttempts() + " failed for "
-                        + task.getEntry().getRelativePath() + ": " + describeException(exception));
+            for (String candidateUrl : candidateUrls) {
+                try {
+                    download(task, candidateUrl, verifyHashAfterDownload, deleteInvalidFiles, useTempFiles);
+                    task.markCompleted();
+                    LoggerUtils.info("Downloaded " + task.getEntry().getRelativePath());
+                    return true;
+                } catch (Exception exception) {
+                    lastFailure = exception;
+                }
             }
+            LoggerUtils.warn("Download attempt " + task.getAttempts() + " failed for "
+                    + task.getEntry().getRelativePath() + ": " + describeException(lastFailure));
         }
         SyncIssueState.set(buildSingleDownloadFailureMessage(task.getEntry().getRelativePath(), lastFailure));
         return false;
     }
 
     private void download(DownloadTask task,
+                          String downloadUrl,
                           boolean verifyHashAfterDownload,
                           boolean deleteInvalidFiles,
                           boolean useTempFiles) throws IOException {
         ManifestEntry entry = task.getEntry();
         Path targetFile = task.getTargetFile();
         FileUtils.ensureParentExists(targetFile);
-        LoggerUtils.info("Downloading: " + entry.getDownloadUrl());
+        LoggerUtils.info("Downloading: " + downloadUrl);
 
         Path downloadFile = useTempFiles
                 ? targetFile.resolveSibling(targetFile.getFileName() + ".modsync.tmp")
                 : targetFile;
 
-        HttpURLConnection connection = (HttpURLConnection) new URL(entry.getDownloadUrl()).openConnection();
-        connection.setConnectTimeout(10_000);
-        connection.setReadTimeout(30_000);
+        HttpURLConnection connection = (HttpURLConnection) new URL(downloadUrl).openConnection();
+        connection.setConnectTimeout(DOWNLOAD_CONNECT_TIMEOUT_MS);
+        connection.setReadTimeout(DOWNLOAD_READ_TIMEOUT_MS);
         connection.setRequestMethod("GET");
 
         int responseCode = connection.getResponseCode();

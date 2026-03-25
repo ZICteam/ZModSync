@@ -16,14 +16,14 @@ class ServerManifestHttpHandlerTest {
     @Test
     void buildPublicManifestCopiesEntriesAndAddsDownloadUrls() {
         ManifestData manifest = manifest(List.of(
-                new ManifestEntry(CategoryType.MOD, "example.jar", "example.jar", 12L, "abc", true, true, ""),
+                new ManifestEntry(CategoryType.MOD, "mods/My Cool+Mod 100%.jar", "My Cool+Mod 100%.jar", 12L, "abc", true, true, ""),
                 new ManifestEntry(CategoryType.CONFIG, "client/options.txt", "options.txt", 4L, "def", true, false, "")
         ));
 
         ManifestData publicManifest = ServerManifestHttpHandler.buildPublicManifest(manifest, "https://cdn.example.com/modsync");
 
         assertEquals(2, publicManifest.getEntries().size());
-        assertEquals("https://cdn.example.com/modsync/files/mod/example.jar",
+        assertEquals("https://cdn.example.com/modsync/files/mod/mods/My%20Cool%2BMod%20100%25.jar",
                 publicManifest.getEntries().get(0).getDownloadUrl());
         assertEquals("https://cdn.example.com/modsync/files/config/client/options.txt",
                 publicManifest.getEntries().get(1).getDownloadUrl());

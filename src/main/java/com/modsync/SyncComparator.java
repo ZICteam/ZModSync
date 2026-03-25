@@ -12,15 +12,21 @@ public final class SyncComparator {
     public static List<ManifestEntry> findMissingOrOutdated(List<ManifestEntry> localEntries, ManifestData manifestData) {
         Map<String, ManifestEntry> localMap = new HashMap<>();
         for (ManifestEntry entry : localEntries) {
-            localMap.put(entry.getIdentityKey(), entry);
+            if (isComparableEntry(entry)) {
+                localMap.put(entry.getIdentityKey(), entry);
+            }
         }
 
         return manifestData.getEntries().stream()
+                .filter(SyncComparator::isComparableEntry)
                 .filter(serverEntry -> compare(serverEntry, localMap.get(serverEntry.getIdentityKey())).requiresDownload())
                 .collect(Collectors.toList());
     }
 
     static ComparisonResult compare(ManifestEntry serverEntry, ManifestEntry clientEntry) {
+        if (!isComparableEntry(serverEntry)) {
+            return ComparisonResult.MATCHES;
+        }
         if (clientEntry == null) {
             return ComparisonResult.MISSING;
         }
@@ -31,6 +37,15 @@ public final class SyncComparator {
             return ComparisonResult.HASH_CHANGED;
         }
         return ComparisonResult.MATCHES;
+    }
+
+    static boolean isComparableEntry(ManifestEntry entry) {
+        return entry != null
+                && entry.getCategory() != null
+                && entry.getRelativePath() != null
+                && !entry.getRelativePath().isBlank()
+                && entry.getSha256() != null
+                && !entry.getSha256().isBlank();
     }
 
     enum ComparisonResult {

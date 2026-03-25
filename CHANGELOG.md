@@ -7,6 +7,123 @@ The format is intentionally simple:
 - Every repository change must add a matching changelog entry.
 - Documentation must be updated in the same change whenever behavior, setup, or usage changes.
 
+## [1.0.89] - 2026-03-25
+
+### Changed
+- Fixed a race in dedicated-server handshake tracking: if the client `hello` reached the server before pending-handshake registration, the player could still be marked pending and then be kicked about 30 seconds later even though ModSync was present and the player was already visible in the world.
+
+## [1.0.88] - 2026-03-25
+
+### Changed
+- Added staged self-update support for the client `modsync` jar: when ModSync itself is synchronized as a managed mod, it now downloads into a protected staging area and launches a small post-exit updater so the new jar replaces the old one after Minecraft fully closes.
+
+## [1.0.87] - 2026-03-25
+
+### Changed
+- Fixed the dedicated-server post-login flow after successful pre-join sync: the client now still sends a lightweight ModSync handshake acknowledgement so the server does not time out and kick an already synchronized player 30 seconds after login.
+
+## [1.0.86] - 2026-03-25
+
+### Changed
+- Added download URL fallback on the client: when a manifest points to an unreachable `public_http_base_url`, ModSync now retries the same file against the currently selected server host and discovered hidden HTTP port before failing the download batch.
+
+## [1.0.85] - 2026-03-25
+
+### Changed
+- Stopped requiring the ModSync post-login handshake on integrated/local server sessions, which prevents false "install Forge and ModSync" disconnects when the client correctly skips the multiplayer-only handshake path.
+- Increased the multiplayer handshake timeout and replaced the kick text with a ModSync-specific timeout/update message so slow client startup is less likely to be misreported as a missing Forge install.
+- Increased default HTTP manifest and file-download timeouts to make large remote modpacks more tolerant of slow or overloaded file hosts during pre-join sync.
+
+## [1.0.84] - 2026-03-23
+
+### Changed
+- Hardened `SyncComparator` so malformed local or server entries without usable category, relative path, or SHA-256 are filtered out before comparison instead of reaching `getIdentityKey()` and comparison paths.
+
+## [1.0.83] - 2026-03-23
+
+### Changed
+- Hardened `ManifestData` itself so `entries` now normalizes to an empty list and copies assigned lists defensively, reducing the chance of `null` propagation or accidental external mutation across manifest, packet, and sync paths.
+
+## [1.0.82] - 2026-03-23
+
+### Changed
+- Hardened the `serverSuggested` fallback path so client download planning now ignores entries without usable download metadata such as missing `downloadUrl` or `sha256`, instead of passing malformed records into the download layer.
+
+## [1.0.81] - 2026-03-23
+
+### Changed
+- Expanded manifest/entry normalization so payload records without SHA-256 values are filtered out during JSON parsing, preventing malformed data from reaching sync comparison and download verification paths.
+
+## [1.0.80] - 2026-03-23
+
+### Changed
+- Expanded manifest/entry normalization so malformed records without a category or usable relative path are dropped during JSON parsing before they can trigger runtime `NullPointerException` paths in sync comparison, cleanup, or packet planning.
+
+## [1.0.79] - 2026-03-23
+
+### Changed
+- Hardened JSON entry parsing so `null` elements inside manifest payloads and entry arrays are filtered out before the data reaches sync comparison, packet planning, or cleanup logic.
+
+## [1.0.78] - 2026-03-23
+
+### Changed
+- Hardened manifest JSON parsing so `null` manifests and `entries: null` payloads are normalized to empty `ManifestData` objects instead of propagating `null` into later sync stages.
+
+## [1.0.77] - 2026-03-23
+
+### Changed
+- Hardened chunk reassembly so packet payloads now reject invalid chunk order and mismatched chunk-count sequences instead of concatenating inconsistent data, and added direct coverage for those cases.
+
+## [1.0.76] - 2026-03-23
+
+### Changed
+- Expanded chunked packet-handshake integration coverage with the stale `serverSuggested` case, verifying that once a full manifest has arrived and matches the client, the client-side decision path ignores stale download suggestions and stays in the no-download state.
+
+## [1.0.75] - 2026-03-23
+
+### Changed
+- Expanded the mini packet-handshake integration coverage with the empty-manifest-cache scenario, verifying that the server responds with an empty outbound manifest and the client stays in the no-download path instead of triggering an unnecessary sync.
+
+## [1.0.74] - 2026-03-23
+
+### Changed
+- Added a chunked packet-handshake integration test that sends long encoded file paths through JSON serialization, chunk splitting, reassembly, and the client-side start-download planner to verify that long names with spaces and URL-sensitive characters survive the full payload path.
+
+## [1.0.73] - 2026-03-23
+
+### Changed
+- Added a mini packet-handshake integration test that runs the server response planner and the client `start-download` planner together, covering both the encoded-filename download case and the fully synchronized no-download case.
+
+## [1.0.72] - 2026-03-23
+
+### Changed
+- Added direct coverage for the packet-handshake fallback when no cached server manifest is available yet, including normalization to an empty manifest with a fresh timestamp before the server computes the outbound response.
+
+## [1.0.71] - 2026-03-23
+
+### Changed
+- Added direct server-side packet-handshake response coverage for the `client file list` path, including the combined rule that outgoing manifest entries must get encoded download URLs before the required-download set is computed and sent back to the client.
+
+## [1.0.70] - 2026-03-23
+
+### Changed
+- Added direct `start-download` decision coverage for the packet handshake path, including the already-synchronized early-exit case, the manifest-based download case, and the fallback behavior when only the server-suggested list is available.
+
+## [1.0.69] - 2026-03-23
+
+### Changed
+- Added direct packet-handshake coverage for `NetworkHandler`, including encoded download URLs in the server manifest payload and the rule that `start-download` should prefer manifest-based comparison over stale server-suggested lists when a full manifest is already cached.
+
+## [1.0.68] - 2026-03-23
+
+### Changed
+- Added direct embedded file-server coverage for encoded download paths, including approved-entry resolution for file names with spaces and URL-sensitive characters plus rejection of malformed or traversal-style requests.
+
+## [1.0.67] - 2026-03-23
+
+### Changed
+- Fixed file download URLs for names with spaces and other URL-sensitive characters by percent-encoding relative paths in manifests/handshake payloads and decoding them safely in the embedded HTTP file server.
+
 ## [1.0.66] - 2026-03-23
 
 ### Changed

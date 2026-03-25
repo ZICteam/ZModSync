@@ -161,6 +161,51 @@ class DownloadManagerTest {
     }
 
     @Test
+    void startDownloadsFallsBackToCurrentServerHostWhenPrimaryDownloadUrlIsRefused() throws Exception {
+        byte[] body = "fallback-download".getBytes();
+        HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        server.createContext("/files/mod/mods/example.jar", exchange -> {
+            exchange.sendResponseHeaders(200, body.length);
+            try (OutputStream outputStream = exchange.getResponseBody()) {
+                outputStream.write(body);
+            }
+        });
+        server.start();
+
+        try {
+            int port = server.getAddress().getPort();
+            ClientSyncContext.setCurrentServerId("127.0.0.1:26683");
+            ClientSyncContext.setCurrentServerHttpPort(port);
+
+            Path targetFile = tempDir.resolve("downloads/mods/example.jar");
+            ManifestEntry entry = new ManifestEntry(
+                    CategoryType.MOD,
+                    "mods/example.jar",
+                    "example.jar",
+                    body.length,
+                    HashUtils.sha256(writeTempFile("fallback.bin", body)),
+                    true,
+                    true,
+                    "http://127.0.0.1:1/files/mod/mods/example.jar"
+            );
+
+            CountDownLatch completion = new CountDownLatch(1);
+            DownloadManager manager = DownloadManager.getInstance();
+            manager.startDownloads(List.of(entry), completion::countDown, item -> targetFile, 1, 0, true, true, true);
+
+            assertTrue(completion.await(10, TimeUnit.SECONDS));
+            awaitInactive(manager);
+
+            assertTrue(Files.exists(targetFile));
+            assertEquals("fallback-download", Files.readString(targetFile));
+            assertFalse(SyncIssueState.hasIssue());
+        } finally {
+            server.stop(0);
+            ClientSyncContext.clear();
+        }
+    }
+
+    @Test
     void startDownloadsSetsIssueStateAndSkipsCompletionOnFailure() throws Exception {
         HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
         server.createContext("/mods/missing.jar", exchange -> {
