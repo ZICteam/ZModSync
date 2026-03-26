@@ -1,6 +1,6 @@
 # SyncBridge Roadmap
 
-Текущая версия мода: `1.0.91`
+Текущая версия мода: `1.0.92`
 
 Этот документ фиксирует практическую дорожную карту развития SyncBridge.
 Фокус: стабильная синхронизация модов и клиентских файлов для одного сервера без усложнения через профили модов.
@@ -82,6 +82,8 @@
   Статус: базовый post-exit self-update для клиентского `modsync` добавлен в `1.0.88`
 - переименовать публичный бренд проекта для CurseForge и релизных страниц
   Статус: в `1.0.91` публичное имя проекта изменено на `SyncBridge`, а технический `modsync` mod id сохранён ради совместимости
+- смягчить timeout-политику handshake и отдать финальное решение админу
+  Статус: в `1.0.92` timeout увеличен до 120 секунд, добавлен console/admin log и команды `modsync handshake allow|kick`, а автоматический кик вынесен в отдельный конфиг-флаг
 - при необходимости собрать отдельный release-процесс под GitHub Releases
   Статус: базовый release workflow добавлен в `1.0.17`, release guide добавлен в `1.0.20`, release version consistency check добавлен в `1.0.39`, локальный release smoke helper добавлен в `1.0.40`, CI/release переведены на тот же smoke helper в `1.0.41`, release notes rendering из changelog добавлен в `1.0.42`, artifact verification добавлена в `1.0.43`, jar metadata verification добавлена в `1.0.44`, checksum generation/publication добавлена в `1.0.45`
 

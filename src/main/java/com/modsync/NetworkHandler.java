@@ -2,6 +2,7 @@ package com.modsync;
 
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.network.chat.Component;
+import net.minecraft.server.MinecraftServer;
 import net.minecraftforge.network.NetworkDirection;
 import net.minecraftforge.network.NetworkEvent;
 import net.minecraftforge.network.NetworkRegistry;
@@ -19,7 +20,6 @@ import java.util.UUID;
 public final class NetworkHandler {
     private static final String PROTOCOL_VERSION = "1";
     private static final int CHUNK_SIZE = 12000;
-    private static final int HANDSHAKE_TIMEOUT_TICKS = 20 * 30;
     private static final String REQUIRED_MOD_KICK_MESSAGE =
             "ModSync handshake timed out. Install/update ModSync on the client and try joining again.";
     private static final Map<UUID, ChunkedPayloadCodec.ChunkAccumulator> CLIENT_FILE_CHUNKS = new HashMap<>();
@@ -164,7 +164,7 @@ public final class NetworkHandler {
         if (player == null || !requiresClientHandshake(player)) {
             return;
         }
-        HANDSHAKE_TRACKER.registerPending(player.getUUID(), HANDSHAKE_TIMEOUT_TICKS);
+        HANDSHAKE_TRACKER.registerPending(player.getUUID(), ConfigManager.handshakeTimeoutSeconds() * 20);
     }
 
     public static void clearPendingHandshake(ServerPlayer player) {
@@ -192,13 +192,73 @@ public final class NetworkHandler {
         });
 
         for (UUID uuid : expired) {
-            HANDSHAKE_TRACKER.pendingView().remove(uuid);
+            HANDSHAKE_TRACKER.markAwaitingAdminDecision(uuid);
             ServerPlayer player = server.getPlayerList().getPlayer(uuid);
             if (player != null) {
-                LoggerUtils.warn("Disconnecting player without ModSync handshake: " + player.getGameProfile().getName());
-                player.connection.disconnect(Component.literal(REQUIRED_MOD_KICK_MESSAGE));
+                handleExpiredHandshake(server, player);
             }
         }
+    }
+
+    public static boolean allowTimedOutHandshake(MinecraftServer server, String playerName) {
+        ServerPlayer player = findOnlinePlayer(server, playerName);
+        if (player == null || !HANDSHAKE_TRACKER.isAwaitingAdminDecision(player.getUUID())) {
+            return false;
+        }
+        HANDSHAKE_TRACKER.clear(player.getUUID());
+        LoggerUtils.warn("Admin allowed player without completed ModSync handshake: "
+                + player.getGameProfile().getName() + " (" + player.getUUID() + ")");
+        return true;
+    }
+
+    public static boolean kickTimedOutHandshake(MinecraftServer server, String playerName) {
+        ServerPlayer player = findOnlinePlayer(server, playerName);
+        if (player == null || !HANDSHAKE_TRACKER.isAwaitingAdminDecision(player.getUUID())) {
+            return false;
+        }
+        HANDSHAKE_TRACKER.clear(player.getUUID());
+        LoggerUtils.warn("Admin kicked player after ModSync handshake timeout: "
+                + player.getGameProfile().getName() + " (" + player.getUUID() + ")");
+        player.connection.disconnect(Component.literal(REQUIRED_MOD_KICK_MESSAGE));
+        return true;
+    }
+
+    private static void handleExpiredHandshake(MinecraftServer server, ServerPlayer player) {
+        String remoteAddress = player.connection == null ? "<unknown>" : String.valueOf(player.connection.getRemoteAddress());
+        String timeoutMessage = "ModSync handshake timed out for player "
+                + player.getGameProfile().getName()
+                + " (" + player.getUUID() + ", " + remoteAddress + ") after "
+                + ConfigManager.handshakeTimeoutSeconds() + "s.";
+
+        if (ConfigManager.autoKickOnHandshakeTimeout()) {
+            LoggerUtils.warn(timeoutMessage + " Auto-kicking is enabled.");
+            HANDSHAKE_TRACKER.clear(player.getUUID());
+            player.connection.disconnect(Component.literal(REQUIRED_MOD_KICK_MESSAGE));
+            return;
+        }
+
+        LoggerUtils.warn(timeoutMessage + " Awaiting admin decision.");
+        notifyAdmins(server,
+                "ModSync handshake timed out for " + player.getGameProfile().getName()
+                        + ". Run /modsync handshake kick " + player.getGameProfile().getName()
+                        + " or /modsync handshake allow " + player.getGameProfile().getName() + ".");
+    }
+
+    private static void notifyAdmins(MinecraftServer server, String message) {
+        Component component = Component.literal(message);
+        server.getPlayerList().getPlayers().stream()
+                .filter(player -> player.hasPermissions(4))
+                .forEach(player -> player.sendSystemMessage(component));
+    }
+
+    private static ServerPlayer findOnlinePlayer(MinecraftServer server, String playerName) {
+        if (server == null || playerName == null || playerName.isBlank()) {
+            return null;
+        }
+        return server.getPlayerList().getPlayers().stream()
+                .filter(player -> player.getGameProfile().getName().equalsIgnoreCase(playerName))
+                .findFirst()
+                .orElse(null);
     }
 
     private static String resolveBaseUrl(ServerPlayer player) {

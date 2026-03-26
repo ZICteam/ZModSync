@@ -21,6 +21,19 @@ public final class ModSyncCommands {
                 .then(Commands.literal("manifest")
                         .then(Commands.literal("refresh")
                                 .executes(context -> refreshManifest(context.getSource()))))
+                .then(Commands.literal("handshake")
+                        .then(Commands.literal("allow")
+                                .then(Commands.argument("player", StringArgumentType.word())
+                                        .executes(context -> allowHandshake(
+                                                context.getSource(),
+                                                StringArgumentType.getString(context, "player")
+                                        ))))
+                        .then(Commands.literal("kick")
+                                .then(Commands.argument("player", StringArgumentType.word())
+                                        .executes(context -> kickHandshake(
+                                                context.getSource(),
+                                                StringArgumentType.getString(context, "player")
+                                        )))))
                 .then(Commands.literal("config")
                         .then(Commands.literal("set")
                                 .then(Commands.literal("http_port")
@@ -34,6 +47,18 @@ public final class ModSyncCommands {
                                                 .executes(context -> setPublicHttpBaseUrl(
                                                         context.getSource(),
                                                         StringArgumentType.getString(context, "url")
+                                                ))))
+                                .then(Commands.literal("handshake_timeout_seconds")
+                                        .then(Commands.argument("seconds", IntegerArgumentType.integer(5, 600))
+                                                .executes(context -> setHandshakeTimeoutSeconds(
+                                                        context.getSource(),
+                                                        IntegerArgumentType.getInteger(context, "seconds")
+                                                ))))
+                                .then(Commands.literal("auto_kick_on_handshake_timeout")
+                                        .then(Commands.argument("enabled", StringArgumentType.word())
+                                                .executes(context -> setAutoKickOnHandshakeTimeout(
+                                                        context.getSource(),
+                                                        StringArgumentType.getString(context, "enabled")
                                                 )))))));
     }
 
@@ -83,10 +108,64 @@ public final class ModSyncCommands {
         source.sendSuccess(() -> Component.literal("  http_bind = " + ConfigManager.serverHttpBind()), false);
         source.sendSuccess(() -> Component.literal("  http_port = " + ConfigManager.serverHttpPort()), false);
         source.sendSuccess(() -> Component.literal("  public_http_base_url = " + (ConfigManager.publicHttpBaseUrl().isBlank() ? "<empty>" : ConfigManager.publicHttpBaseUrl())), false);
+        source.sendSuccess(() -> Component.literal("  handshake_timeout_seconds = " + ConfigManager.handshakeTimeoutSeconds()), false);
+        source.sendSuccess(() -> Component.literal("  auto_kick_on_handshake_timeout = " + ConfigManager.autoKickOnHandshakeTimeout()), false);
         source.sendSuccess(() -> Component.literal("  manifest_entries = " + manifestEntries), false);
         source.sendSuccess(() -> Component.literal("  manifest_generated_at = " + generatedAt), false);
         source.sendSuccess(() -> Component.literal("  refresh_initial_delay_minutes = " + ModSync.getManifestRefreshInitialDelayMinutes()), false);
         source.sendSuccess(() -> Component.literal("  refresh_period_minutes = " + ModSync.getManifestRefreshPeriodMinutes()), false);
         return 1;
+    }
+
+    private static int allowHandshake(CommandSourceStack source, String playerName) {
+        boolean allowed = NetworkHandler.allowTimedOutHandshake(source.getServer(), playerName);
+        if (!allowed) {
+            source.sendFailure(Component.literal("No timed-out ModSync handshake is waiting for admin decision for player " + playerName + "."));
+            return 0;
+        }
+        source.sendSuccess(() -> Component.literal("Allowed player " + playerName + " to stay after ModSync handshake timeout."), true);
+        return 1;
+    }
+
+    private static int kickHandshake(CommandSourceStack source, String playerName) {
+        boolean kicked = NetworkHandler.kickTimedOutHandshake(source.getServer(), playerName);
+        if (!kicked) {
+            source.sendFailure(Component.literal("No timed-out ModSync handshake is waiting for admin decision for player " + playerName + "."));
+            return 0;
+        }
+        source.sendSuccess(() -> Component.literal("Kicked player " + playerName + " after ModSync handshake timeout."), true);
+        return 1;
+    }
+
+    private static int setHandshakeTimeoutSeconds(CommandSourceStack source, int seconds) {
+        try {
+            ConfigManager.setHandshakeTimeoutSecondsAndSave(seconds);
+            ModSync.reloadServerRuntime("command set handshake_timeout_seconds");
+            source.sendSuccess(() -> Component.literal("ModSync handshake_timeout_seconds set to " + seconds + "."), true);
+            return 1;
+        } catch (Exception exception) {
+            source.sendFailure(Component.literal("Failed to set ModSync handshake_timeout_seconds: " + exception.getMessage()));
+            return 0;
+        }
+    }
+
+    private static int setAutoKickOnHandshakeTimeout(CommandSourceStack source, String enabledRaw) {
+        boolean enabled;
+        if ("true".equalsIgnoreCase(enabledRaw) || "false".equalsIgnoreCase(enabledRaw)) {
+            enabled = Boolean.parseBoolean(enabledRaw);
+        } else {
+            source.sendFailure(Component.literal("Value must be true or false."));
+            return 0;
+        }
+
+        try {
+            ConfigManager.setAutoKickOnHandshakeTimeoutAndSave(enabled);
+            ModSync.reloadServerRuntime("command set auto_kick_on_handshake_timeout");
+            source.sendSuccess(() -> Component.literal("ModSync auto_kick_on_handshake_timeout set to " + enabled + "."), true);
+            return 1;
+        } catch (Exception exception) {
+            source.sendFailure(Component.literal("Failed to set ModSync auto_kick_on_handshake_timeout: " + exception.getMessage()));
+            return 0;
+        }
     }
 }

@@ -2,7 +2,7 @@
 
 SyncBridge is a universal Forge 1.20.1 mod that lets a server distribute mods and resource files to connecting clients while Minecraft is running.
 
-Current mod version: `1.0.91`
+Current mod version: `1.0.92`
 
 ## Requirements
 
@@ -77,6 +77,7 @@ If a manifest still contains a dead `public_http_base_url`, the client now retri
 After successful pre-join sync on a dedicated server, the client now still sends a lightweight SyncBridge acknowledgement on login so the server does not kick an already synchronized player for a missing handshake timeout.
 SyncBridge can now also update its own client jar: the new `modsync` build is staged outside `mods/` during sync and then swapped into place by a tiny post-exit updater after Minecraft fully stops.
 Dedicated-server handshake tracking now also tolerates out-of-order arrival between the first client `hello` and pending registration, which avoids intermittent late kicks for already connected players.
+The default dedicated-server handshake timeout is now 120 seconds, and timeout handling is operator-driven by default: instead of immediately kicking, SyncBridge logs the timeout to console, notifies online admins, and waits for an explicit `allow` or `kick` decision unless auto-kick is enabled in config.
 
 ## Server Repository Layout
 
@@ -120,6 +121,8 @@ Important options:
 - `optional_client_target`
 - `download_threads`
 - `retry_count`
+- `handshake_timeout_seconds`
+- `auto_kick_on_handshake_timeout`
 - `verify_hash_after_download`
 - `skip_file_extensions`
 

@@ -28,6 +28,8 @@ public final class ConfigManager {
     private static final ForgeConfigSpec.ConfigValue<String> OPTIONAL_CLIENT_TARGET;
     private static final ForgeConfigSpec.IntValue DOWNLOAD_THREADS;
     private static final ForgeConfigSpec.IntValue RETRY_COUNT;
+    private static final ForgeConfigSpec.IntValue HANDSHAKE_TIMEOUT_SECONDS;
+    private static final ForgeConfigSpec.BooleanValue AUTO_KICK_ON_HANDSHAKE_TIMEOUT;
     private static final ForgeConfigSpec.BooleanValue VERIFY_HASH_AFTER_DOWNLOAD;
     private static final ForgeConfigSpec.BooleanValue DELETE_INVALID_FILES;
     private static final ForgeConfigSpec.BooleanValue USE_TEMP_FILES;
@@ -54,6 +56,8 @@ public final class ConfigManager {
 
         DOWNLOAD_THREADS = builder.defineInRange("download_threads", 4, 1, 16);
         RETRY_COUNT = builder.defineInRange("retry_count", 3, 0, 10);
+        HANDSHAKE_TIMEOUT_SECONDS = builder.defineInRange("handshake_timeout_seconds", 120, 5, 600);
+        AUTO_KICK_ON_HANDSHAKE_TIMEOUT = builder.define("auto_kick_on_handshake_timeout", false);
         VERIFY_HASH_AFTER_DOWNLOAD = builder.define("verify_hash_after_download", true);
         DELETE_INVALID_FILES = builder.define("delete_invalid_files", true);
         USE_TEMP_FILES = builder.define("use_temp_files", true);
@@ -127,6 +131,14 @@ public final class ConfigManager {
         return RETRY_COUNT.get();
     }
 
+    public static int handshakeTimeoutSeconds() {
+        return HANDSHAKE_TIMEOUT_SECONDS.get();
+    }
+
+    public static boolean autoKickOnHandshakeTimeout() {
+        return AUTO_KICK_ON_HANDSHAKE_TIMEOUT.get();
+    }
+
     public static boolean verifyHashAfterDownload() {
         return VERIFY_HASH_AFTER_DOWNLOAD.get();
     }
@@ -176,6 +188,8 @@ public final class ConfigManager {
             OPTIONAL_CLIENT_TARGET.set(fileConfig.getOrElse("optional_client_target", OPTIONAL_CLIENT_TARGET.get()));
             DOWNLOAD_THREADS.set(fileConfig.getOrElse("download_threads", DOWNLOAD_THREADS.get()));
             RETRY_COUNT.set(fileConfig.getOrElse("retry_count", RETRY_COUNT.get()));
+            HANDSHAKE_TIMEOUT_SECONDS.set(fileConfig.getOrElse("handshake_timeout_seconds", HANDSHAKE_TIMEOUT_SECONDS.get()));
+            AUTO_KICK_ON_HANDSHAKE_TIMEOUT.set(fileConfig.getOrElse("auto_kick_on_handshake_timeout", AUTO_KICK_ON_HANDSHAKE_TIMEOUT.get()));
             VERIFY_HASH_AFTER_DOWNLOAD.set(fileConfig.getOrElse("verify_hash_after_download", VERIFY_HASH_AFTER_DOWNLOAD.get()));
             DELETE_INVALID_FILES.set(fileConfig.getOrElse("delete_invalid_files", DELETE_INVALID_FILES.get()));
             USE_TEMP_FILES.set(fileConfig.getOrElse("use_temp_files", USE_TEMP_FILES.get()));
@@ -203,6 +217,26 @@ public final class ConfigManager {
         try (CommentedFileConfig fileConfig = CommentedFileConfig.builder(path).sync().autosave().build()) {
             fileConfig.load();
             fileConfig.set("public_http_base_url", normalized);
+            fileConfig.save();
+        }
+    }
+
+    public static synchronized void setHandshakeTimeoutSecondsAndSave(int seconds) throws IOException {
+        HANDSHAKE_TIMEOUT_SECONDS.set(seconds);
+        Path path = configPath();
+        try (CommentedFileConfig fileConfig = CommentedFileConfig.builder(path).sync().autosave().build()) {
+            fileConfig.load();
+            fileConfig.set("handshake_timeout_seconds", seconds);
+            fileConfig.save();
+        }
+    }
+
+    public static synchronized void setAutoKickOnHandshakeTimeoutAndSave(boolean enabled) throws IOException {
+        AUTO_KICK_ON_HANDSHAKE_TIMEOUT.set(enabled);
+        Path path = configPath();
+        try (CommentedFileConfig fileConfig = CommentedFileConfig.builder(path).sync().autosave().build()) {
+            fileConfig.load();
+            fileConfig.set("auto_kick_on_handshake_timeout", enabled);
             fileConfig.save();
         }
     }

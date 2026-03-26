@@ -7,6 +7,14 @@ The format is intentionally simple:
 - Every repository change must add a matching changelog entry.
 - Documentation must be updated in the same change whenever behavior, setup, or usage changes.
 
+## [1.0.92] - 2026-03-26
+
+### Changed
+- Increased the default dedicated-server ModSync handshake timeout to 120 seconds.
+- Added detailed console/admin logging for handshake timeout cases, including player identity and the configured timeout length.
+- Replaced the previous unconditional timeout kick path with an admin-decision flow by default: timed-out players are now held for operator review unless `auto_kick_on_handshake_timeout` is explicitly enabled.
+- Added `modsync handshake allow <player>` and `modsync handshake kick <player>` commands, plus config settings for `handshake_timeout_seconds` and `auto_kick_on_handshake_timeout`.
+
 ## [1.0.91] - 2026-03-26
 
 ### Changed

@@ -31,4 +31,15 @@ class HandshakePolicyTest {
 
         assertFalse(handshakeTracker.hasPending(playerId));
     }
+
+    @Test
+    void expiredHandshakeShouldMoveToAwaitingAdminDecision() {
+        UUID playerId = UUID.randomUUID();
+
+        handshakeTracker.registerPending(playerId, 2400);
+        handshakeTracker.markAwaitingAdminDecision(playerId);
+
+        assertFalse(handshakeTracker.hasPending(playerId));
+        assertTrue(handshakeTracker.isAwaitingAdminDecision(playerId));
+    }
 }
