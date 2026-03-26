@@ -1,8 +1,8 @@
-# ModSync
+# SyncBridge
 
-ModSync is a universal Forge 1.20.1 mod that lets a server distribute mods and resource files to connecting clients while Minecraft is running.
+SyncBridge is a universal Forge 1.20.1 mod that lets a server distribute mods and resource files to connecting clients while Minecraft is running.
 
-Current mod version: `1.0.89`
+Current mod version: `1.0.91`
 
 ## Requirements
 
@@ -71,11 +71,11 @@ The Gradle build script has also been cleaned up toward more current task/publis
 The Gradle test-framework deprecation has been addressed by using explicit JUnit Jupiter API, engine, and platform launcher dependencies, and the local `build --warning-mode all` path is currently clean.
 The Forge 47.4.18 compile path is now also clean of the earlier removal warnings after updating `ResourceLocation` creation and config registration to the newer API-safe patterns.
 Manifest HTTP fallback resolution is now covered by unit tests for direct URLs, configured public base URLs, and IPv6 hosts.
-Integrated/local server sessions no longer trigger the dedicated-server ModSync handshake timeout path, which avoids false "missing ModSync/Forge" disconnects during local play or local diagnostics.
+Integrated/local server sessions no longer trigger the dedicated-server SyncBridge handshake timeout path, which avoids false "missing SyncBridge/Forge" disconnects during local play or local diagnostics.
 Default network tolerance is also higher now: pre-join manifest fetches and HTTP file downloads wait longer before timing out, which helps large remote modpacks sync more reliably on slower hosts.
-If a manifest still contains a dead `public_http_base_url`, the client now retries downloads against the selected server host plus the discovered hidden ModSync HTTP port before giving up.
-After successful pre-join sync on a dedicated server, the client now still sends a lightweight ModSync acknowledgement on login so the server does not kick an already synchronized player for a missing handshake timeout.
-ModSync can now also update its own client jar: the new `modsync` build is staged outside `mods/` during sync and then swapped into place by a tiny post-exit updater after Minecraft fully stops.
+If a manifest still contains a dead `public_http_base_url`, the client now retries downloads against the selected server host plus the discovered hidden SyncBridge HTTP port before giving up.
+After successful pre-join sync on a dedicated server, the client now still sends a lightweight SyncBridge acknowledgement on login so the server does not kick an already synchronized player for a missing handshake timeout.
+SyncBridge can now also update its own client jar: the new `modsync` build is staged outside `mods/` during sync and then swapped into place by a tiny post-exit updater after Minecraft fully stops.
 Dedicated-server handshake tracking now also tolerates out-of-order arrival between the first client `hello` and pending registration, which avoids intermittent late kicks for already connected players.
 
 ## Server Repository Layout
@@ -105,7 +105,7 @@ The mod scans `mods/` plus `sync_repo/` and writes a generated manifest to `conf
 4. Client compares local files with the manifest.
 5. Missing or outdated files download in background threads over the embedded HTTP server.
 6. When sync was started from the connect flow, the client continues into the server automatically after pre-join sync completes.
-7. Files previously installed by ModSync are removed if they no longer exist in that server's manifest.
+7. Files previously installed by SyncBridge are removed if they no longer exist in that server's manifest.
 8. If restart-required files were changed, the client sees a restart prompt.
 
 ## Configuration
@@ -133,13 +133,13 @@ public_http_base_url = "https://your-domain.example/modsync"
 
 The server will publish download URLs using that base URL.
 
-The proxy must forward these paths to the internal ModSync HTTP server:
+The proxy must forward these paths to the internal SyncBridge HTTP server:
 
 - `/manifest`
 - `/files/...`
 
-If `public_http_base_url` is empty, ModSync falls back to direct links using `server_http_port`.
-When `public_http_base_url` is set, ModSync now uses it consistently for generated download links in both manifest delivery paths.
+If `public_http_base_url` is empty, SyncBridge falls back to direct links using `server_http_port`.
+When `public_http_base_url` is set, SyncBridge now uses it consistently for generated download links in both manifest delivery paths.
 Detailed deployment examples are documented in `docs/Server_Setup_RU.md`.
 
 ## Notes
@@ -148,11 +148,11 @@ Detailed deployment examples are documented in `docs/Server_Setup_RU.md`.
 - Hashes are verified with SHA-256.
 - Path traversal is blocked on both manifest generation and HTTP serving.
 - Download URLs now safely encode file-path segments before transport and decode them again on the embedded HTTP server.
-- Cleanup only removes files that still match the last ModSync-managed version, which reduces the risk of deleting locally replaced files.
+- Cleanup only removes files that still match the last SyncBridge-managed version, which reduces the risk of deleting locally replaced files.
 - The mod logs operational events to `logs/modsync.log` when enabled.
 - Network and download failures are surfaced both in the log panel and directly on the sync progress screen.
 - Client and server scans avoid some duplicate filesystem metadata reads to behave a bit better on large file sets.
-- The sync progress screen now shows a clearer high-level state so players can tell whether ModSync is checking, downloading, finished, failed, or waiting for restart.
+- The sync progress screen now shows a clearer high-level state so players can tell whether SyncBridge is checking, downloading, finished, failed, or waiting for restart.
 
 ## Documentation
 
@@ -175,3 +175,17 @@ For every change in this repository:
 - add an entry to `CHANGELOG.md` with the new version and a short summary of what changed
 - update documentation in `README.md` and/or `docs/` when behavior, setup, UI, or workflows changed
 - optionally create and push a tag like `v1.0.17` to publish a GitHub Release artifact
+
+## CurseForge Publishing
+
+CurseForge project creation still has to be done once in the author web interface.
+
+After that, tagged releases can be uploaded automatically if the repository has:
+
+- `CURSEFORGE_TOKEN` in GitHub Actions secrets
+- `CURSEFORGE_PROJECT_ID` in GitHub Actions variables
+- optional `CURSEFORGE_GAME_VERSIONS`, defaulting to `1.20.1,Forge`
+
+Prepared project-page text is included in:
+
+Note: the public name is now `SyncBridge`, but the technical `modsync` mod id is intentionally kept for compatibility with existing installations.

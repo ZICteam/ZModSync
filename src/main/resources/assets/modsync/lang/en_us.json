@@ -14,7 +14,7 @@
   "modsync.refresh": "Refresh",
   "modsync.back": "Back",
   "modsync.logs": "Logs",
-  "modsync.progress.title": "ModSync Progress",
+  "modsync.progress.title": "SyncBridge Progress",
   "modsync.progress.none": "No downloads are currently active.",
   "modsync.progress.state_waiting": "Checking",
   "modsync.progress.state_downloading": "Downloading",

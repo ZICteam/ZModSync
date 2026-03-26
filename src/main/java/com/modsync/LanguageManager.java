@@ -26,7 +26,7 @@ public final class LanguageManager {
         FALLBACK_EN.put("modsync.refresh", "Refresh");
         FALLBACK_EN.put("modsync.back", "Back");
         FALLBACK_EN.put("modsync.logs", "Logs");
-        FALLBACK_EN.put("modsync.progress.title", "ModSync Progress");
+        FALLBACK_EN.put("modsync.progress.title", "SyncBridge Progress");
         FALLBACK_EN.put("modsync.progress.none", "No downloads are currently active.");
         FALLBACK_EN.put("modsync.progress.state_waiting", "Checking");
         FALLBACK_EN.put("modsync.progress.state_downloading", "Downloading");

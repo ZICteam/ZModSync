@@ -7,6 +7,12 @@ The format is intentionally simple:
 - Every repository change must add a matching changelog entry.
 - Documentation must be updated in the same change whenever behavior, setup, or usage changes.
 
+## [1.0.91] - 2026-03-26
+
+### Changed
+- Rebranded the public project name from `ModSync` to `SyncBridge` for distribution pages and user-facing metadata while keeping the technical `modsync` mod id for compatibility with existing installs and sync flows.
+- Replaced the old `MIT` placeholder with `Custom License` in project metadata and added the corresponding repository license file for personal-use-friendly, commercial-use-restricted distribution.
+
 ## [1.0.89] - 2026-03-25
 
 ### Changed
