@@ -10,7 +10,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class SelfUpdateCoordinatorTest {
     @Test
-    void planForEntryStagesProtectedModsyncJarForPostExitReplacement() {
+    void planForEntryLeavesProtectedModsyncJarOnNormalTargetPath() {
         ManifestEntry entry = new ManifestEntry(
                 CategoryType.MOD,
                 "modsync-1.0.88.jar",
@@ -27,11 +27,11 @@ class SelfUpdateCoordinatorTest {
         SelfUpdateCoordinator.SelfUpdatePlan plan =
                 SelfUpdateCoordinator.planForEntry(entry, defaultTarget, currentJar);
 
-        assertTrue(plan.active());
-        assertEquals(Path.of("/game/.modsync/self-update/modsync-1.0.88.jar.pending"), plan.downloadTargetPath());
-        assertEquals(currentJar, plan.currentJarPath());
-        assertEquals(defaultTarget, plan.targetJarPath());
-        assertEquals(Path.of("/game/.modsync/self-update/modsync-1.0.88.jar.pending"), plan.stagedJarPath());
+        assertFalse(plan.active());
+        assertEquals(defaultTarget, plan.downloadTargetPath());
+        assertEquals(null, plan.currentJarPath());
+        assertEquals(null, plan.targetJarPath());
+        assertEquals(null, plan.stagedJarPath());
     }
 
     @Test

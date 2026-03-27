@@ -7,6 +7,12 @@ The format is intentionally simple:
 - Every repository change must add a matching changelog entry.
 - Documentation must be updated in the same change whenever behavior, setup, or usage changes.
 
+## [1.0.93] - 2026-03-27
+
+### Changed
+- Removed the staged self-update launcher path for the client `modsync` jar so distributed builds no longer generate or execute shell or PowerShell updater scripts during shutdown.
+- Kept the rest of the sync pipeline intact while turning self-update handling into a safe no-op for distribution compliance.
+
 ## [1.0.92] - 2026-03-26
 
 ### Changed

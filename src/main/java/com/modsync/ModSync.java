@@ -30,7 +30,6 @@ public class ModSync {
     public ModSync() {
         ConfigManager.register();
         LoggerUtils.init(ConfigManager.logFile(), ConfigManager.logToFile());
-        SelfUpdateCoordinator.initShutdownHook();
         LoggerUtils.info("ModSync startup");
         NetworkHandler.register();
         MinecraftForge.EVENT_BUS.register(this);

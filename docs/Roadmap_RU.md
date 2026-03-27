@@ -1,6 +1,6 @@
 # SyncBridge Roadmap
 
-Текущая версия мода: `1.0.92`
+Текущая версия мода: `1.0.93`
 
 Этот документ фиксирует практическую дорожную карту развития SyncBridge.
 Фокус: стабильная синхронизация модов и клиентских файлов для одного сервера без усложнения через профили модов.
@@ -78,8 +78,8 @@
   Статус: decision coverage для `PreJoinSyncManager` добавлено в `1.0.65`, включая already-synced, download-required и auto-continue сценарии
 - усилить post-login handshake orchestration path
   Статус: coverage для `ClientBootstrap` добавлено в `1.0.66`, включая local-session skip, duplicate-handshake suppression и обычный multiplayer login path, ложный server-side handshake requirement для integrated/local session устранён в `1.0.85`, dedicated post-login acknowledgement после успешного pre-join sync добавлен в `1.0.87`, а гонка между ранним client hello и поздней pending registration на dedicated сервере устранена в `1.0.89`
-- добавить безопасное staged self-update поведение для самого `modsync.jar`
-  Статус: базовый post-exit self-update для клиентского `modsync` добавлен в `1.0.88`
+- убрать self-update лаунчер для самого `modsync.jar`, чтобы сборки проходили ограничения площадок распространения
+  Статус: выполнено в `1.0.93`; staged post-exit self-update удалён из distributed build
 - переименовать публичный бренд проекта для CurseForge и релизных страниц
   Статус: в `1.0.91` публичное имя проекта изменено на `SyncBridge`, а технический `modsync` mod id сохранён ради совместимости
 - смягчить timeout-политику handshake и отдать финальное решение админу
