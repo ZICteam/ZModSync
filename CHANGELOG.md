@@ -7,6 +7,14 @@ The format is intentionally simple:
 - Every repository change must add a matching changelog entry.
 - Documentation must be updated in the same change whenever behavior, setup, or usage changes.
 
+## [1.0.94] - 2026-03-30
+
+### Changed
+- Stopped the automatic scheduled manifest refresh loop on the server: the cached manifest is now generated at server startup and on explicit runtime reload only.
+- Changed the Connect flow so it only validates the client against the server manifest; if the client is outdated, the screen now asks the player to update mods first instead of downloading them automatically.
+- Kept the Download Mods flow as the explicit action that performs file downloads.
+- Updated progress/localization text to use safer indexed placeholders and added a clearer "update mods first" message for out-of-sync clients.
+
 ## [1.0.93] - 2026-03-27
 
 ### Changed

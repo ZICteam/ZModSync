@@ -1,6 +1,6 @@
 # SyncBridge Roadmap
 
-Текущая версия мода: `1.0.93`
+Текущая версия мода: `1.0.94`
 
 Этот документ фиксирует практическую дорожную карту развития SyncBridge.
 Фокус: стабильная синхронизация модов и клиентских файлов для одного сервера без усложнения через профили модов.
@@ -76,6 +76,7 @@
   Статус: local scan cache reuse/expiry/invalidation coverage добавлено в `1.0.64`
 - усилить pre-join orchestration path
   Статус: decision coverage для `PreJoinSyncManager` добавлено в `1.0.65`, включая already-synced, download-required и auto-continue сценарии
+  Дополнение: в `1.0.94` connect-flow больше не скачивает моды автоматически; он только валидирует состояние клиента и просит сначала выполнить отдельный download-flow
 - усилить post-login handshake orchestration path
   Статус: coverage для `ClientBootstrap` добавлено в `1.0.66`, включая local-session skip, duplicate-handshake suppression и обычный multiplayer login path, ложный server-side handshake requirement для integrated/local session устранён в `1.0.85`, dedicated post-login acknowledgement после успешного pre-join sync добавлен в `1.0.87`, а гонка между ранним client hello и поздней pending registration на dedicated сервере устранена в `1.0.89`
 - убрать self-update лаунчер для самого `modsync.jar`, чтобы сборки проходили ограничения площадок распространения

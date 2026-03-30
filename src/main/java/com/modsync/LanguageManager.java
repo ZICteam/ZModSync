@@ -20,7 +20,7 @@ public final class LanguageManager {
         FALLBACK_EN.put("modsync.restart.updated_header", "Updated files");
         FALLBACK_EN.put("modsync.restart.change.downloaded", "Updated");
         FALLBACK_EN.put("modsync.restart.change.deleted", "Removed");
-        FALLBACK_EN.put("modsync.restart.more", "... and %s more");
+        FALLBACK_EN.put("modsync.restart.more", "... and %1$s more");
         FALLBACK_EN.put("modsync.download_button", "Download Mods");
         FALLBACK_EN.put("modsync.download_short", "Download");
         FALLBACK_EN.put("modsync.refresh", "Refresh");
@@ -35,6 +35,7 @@ public final class LanguageManager {
         FALLBACK_EN.put("modsync.progress.state_restart", "Restart Required");
         FALLBACK_EN.put("modsync.error.title", "Sync Error");
         FALLBACK_EN.put("modsync.error.check_logs", "Open the log panel below for details.");
+        FALLBACK_EN.put("modsync.error.update_required", "Your mods are outdated. Update them with the download button before connecting.");
         FALLBACK_EN.put("modsync.multiplayer.empty", "No saved servers yet.");
         FALLBACK_EN.put("modsync.multiplayer.details", "Server Details");
         FALLBACK_EN.put("modsync.multiplayer.no_selection", "Select a server from the list.");

@@ -13,18 +13,11 @@ import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.event.config.ModConfigEvent;
 import net.minecraftforge.fml.loading.FMLEnvironment;
 
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
-
 @Mod(ModSync.MOD_ID)
 public class ModSync {
     public static final String MOD_ID = "modsync";
-    private static final long MANIFEST_REFRESH_INITIAL_DELAY_MINUTES = 5L;
-    private static final long MANIFEST_REFRESH_PERIOD_MINUTES = 60L;
 
     private static volatile ManifestData lastManifest;
-    private static ScheduledExecutorService manifestRefreshExecutor;
     private static String visibleServerMotd = "";
 
     public ModSync() {
@@ -48,14 +41,6 @@ public class ModSync {
         lastManifest = manifestData;
     }
 
-    public static long getManifestRefreshInitialDelayMinutes() {
-        return MANIFEST_REFRESH_INITIAL_DELAY_MINUTES;
-    }
-
-    public static long getManifestRefreshPeriodMinutes() {
-        return MANIFEST_REFRESH_PERIOD_MINUTES;
-    }
-
     private static synchronized void refreshManifest(String reason) {
         try {
             ManifestData manifest = ManifestGenerator.generateManifest();
@@ -64,28 +49,6 @@ public class ModSync {
             LoggerUtils.info("Manifest cache refreshed: " + reason);
         } catch (Exception exception) {
             LoggerUtils.error("Failed to refresh manifest cache: " + reason, exception);
-        }
-    }
-
-    private static synchronized void startManifestRefreshTask() {
-        stopManifestRefreshTask();
-        manifestRefreshExecutor = Executors.newSingleThreadScheduledExecutor(runnable -> {
-            Thread thread = new Thread(runnable, "modsync-manifest-refresh");
-            thread.setDaemon(true);
-            return thread;
-        });
-        manifestRefreshExecutor.scheduleAtFixedRate(
-                () -> refreshManifest("scheduled"),
-                MANIFEST_REFRESH_INITIAL_DELAY_MINUTES,
-                MANIFEST_REFRESH_PERIOD_MINUTES,
-                TimeUnit.MINUTES
-        );
-    }
-
-    private static synchronized void stopManifestRefreshTask() {
-        if (manifestRefreshExecutor != null) {
-            manifestRefreshExecutor.shutdownNow();
-            manifestRefreshExecutor = null;
         }
     }
 
@@ -101,7 +64,6 @@ public class ModSync {
         updateServerMotdMetadata();
         refreshManifest(reason);
         HttpFileServer.getInstance().start();
-        startManifestRefreshTask();
         LoggerUtils.info("ModSync runtime reloaded: " + reason);
     }
 
@@ -132,12 +94,10 @@ public class ModSync {
         updateServerMotdMetadata();
         refreshManifest("server start");
         HttpFileServer.getInstance().start();
-        startManifestRefreshTask();
     }
 
     @SubscribeEvent
     public void onServerStopping(ServerStoppingEvent event) {
-        stopManifestRefreshTask();
         HttpFileServer.getInstance().stop();
     }
 

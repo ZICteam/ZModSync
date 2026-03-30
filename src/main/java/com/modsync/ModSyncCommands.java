@@ -112,8 +112,6 @@ public final class ModSyncCommands {
         source.sendSuccess(() -> Component.literal("  auto_kick_on_handshake_timeout = " + ConfigManager.autoKickOnHandshakeTimeout()), false);
         source.sendSuccess(() -> Component.literal("  manifest_entries = " + manifestEntries), false);
         source.sendSuccess(() -> Component.literal("  manifest_generated_at = " + generatedAt), false);
-        source.sendSuccess(() -> Component.literal("  refresh_initial_delay_minutes = " + ModSync.getManifestRefreshInitialDelayMinutes()), false);
-        source.sendSuccess(() -> Component.literal("  refresh_period_minutes = " + ModSync.getManifestRefreshPeriodMinutes()), false);
         return 1;
     }
 

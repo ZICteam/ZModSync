@@ -17,11 +17,13 @@ class PreJoinSyncManagerTest {
         PreJoinSyncManager.PreJoinSyncPlan plan = PreJoinSyncManager.buildSyncPlan(
                 List.of(sharedEntry),
                 manifest,
+                true,
                 true
         );
 
         assertTrue(plan.alreadySynchronized());
         assertEquals(List.of(), plan.requiredEntries());
+        assertFalse(plan.downloadRequiredButSkipped());
         assertTrue(plan.continueImmediately());
         assertFalse(plan.continueAfterDownloads());
     }
@@ -34,11 +36,13 @@ class PreJoinSyncManagerTest {
         PreJoinSyncManager.PreJoinSyncPlan plan = PreJoinSyncManager.buildSyncPlan(
                 List.of(sharedEntry),
                 manifest,
-                false
+                false,
+                true
         );
 
         assertTrue(plan.alreadySynchronized());
         assertEquals(List.of(), plan.requiredEntries());
+        assertFalse(plan.downloadRequiredButSkipped());
         assertFalse(plan.continueImmediately());
         assertFalse(plan.continueAfterDownloads());
     }
@@ -52,12 +56,14 @@ class PreJoinSyncManagerTest {
         PreJoinSyncManager.PreJoinSyncPlan plan = PreJoinSyncManager.buildSyncPlan(
                 List.of(localEntry),
                 manifest,
+                true,
                 true
         );
 
         assertFalse(plan.alreadySynchronized());
         assertEquals(List.of("MOD:mods/core.jar"),
                 plan.requiredEntries().stream().map(ManifestEntry::getIdentityKey).toList());
+        assertFalse(plan.downloadRequiredButSkipped());
         assertFalse(plan.continueImmediately());
         assertTrue(plan.continueAfterDownloads());
     }
@@ -69,12 +75,31 @@ class PreJoinSyncManagerTest {
         PreJoinSyncManager.PreJoinSyncPlan plan = PreJoinSyncManager.buildSyncPlan(
                 List.of(),
                 manifest,
-                false
+                false,
+                true
         );
 
         assertFalse(plan.alreadySynchronized());
         assertEquals(List.of("MOD:mods/core.jar"),
                 plan.requiredEntries().stream().map(ManifestEntry::getIdentityKey).toList());
+        assertFalse(plan.downloadRequiredButSkipped());
+        assertFalse(plan.continueImmediately());
+        assertFalse(plan.continueAfterDownloads());
+    }
+
+    @Test
+    void buildSyncPlanBlocksConnectionWithoutDownloadsWhenClientIsOutdated() {
+        ManifestData manifest = manifest(entry("mods/core.jar", "server-hash"));
+
+        PreJoinSyncManager.PreJoinSyncPlan plan = PreJoinSyncManager.buildSyncPlan(
+                List.of(),
+                manifest,
+                true,
+                false
+        );
+
+        assertFalse(plan.alreadySynchronized());
+        assertTrue(plan.downloadRequiredButSkipped());
         assertFalse(plan.continueImmediately());
         assertFalse(plan.continueAfterDownloads());
     }

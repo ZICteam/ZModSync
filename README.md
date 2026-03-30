@@ -2,7 +2,7 @@
 
 SyncBridge is a universal Forge 1.20.1 mod that lets a server distribute mods and resource files to connecting clients while Minecraft is running.
 
-Current mod version: `1.0.93`
+Current mod version: `1.0.94`
 
 ## Requirements
 
@@ -105,9 +105,10 @@ The mod scans `mods/` plus `sync_repo/` and writes a generated manifest to `conf
 3. Server generates the manifest and returns it to the client.
 4. Client compares local files with the manifest.
 5. Missing or outdated files download in background threads over the embedded HTTP server.
-6. When sync was started from the connect flow, the client continues into the server automatically after pre-join sync completes.
-7. Files previously installed by SyncBridge are removed if they no longer exist in that server's manifest.
-8. If restart-required files were changed, the client sees a restart prompt.
+6. The Connect action only validates sync state and continues into the server if the client is already up to date.
+7. The Download Mods action is the explicit flow that downloads missing or outdated files without auto-connecting.
+8. Files previously installed by SyncBridge are removed if they no longer exist in that server's manifest.
+9. If restart-required files were changed, the client sees a restart prompt.
 
 ## Configuration
 
