@@ -138,10 +138,11 @@ class ServerManifestHttpHandlerTest {
 
         try {
             int configuredPort = configured.getAddress().getPort();
+            int unavailableDiscoveredPort = configuredPort == 12345 ? 12346 : 12345;
 
             ManifestData fetched = ServerManifestHttpHandler.fetchManifest(
                     "127.0.0.1:25565",
-                    configuredPort + 1000,
+                    unavailableDiscoveredPort,
                     200,
                     200,
                     configuredPort

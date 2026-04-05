@@ -65,6 +65,14 @@ class DownloadManagerTest {
     }
 
     @Test
+    void buildPostDownloadVerificationFailureMessageIncludesCount() {
+        assertEquals(
+                "Download completed, but post-download verification still failed for 2 file(s). Check the log panel for details.",
+                DownloadManager.buildPostDownloadVerificationFailureMessage(2)
+        );
+    }
+
+    @Test
     void finalizeDownloadMovesVerifiedTempFileIntoTarget() throws Exception {
         Path downloadFile = tempDir.resolve("example.jar.modsync.tmp");
         Path targetFile = tempDir.resolve("example.jar");

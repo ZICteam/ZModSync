@@ -222,6 +222,12 @@ public final class DownloadManager {
         return "Failed to download " + relativePath + ": " + describeException(exception);
     }
 
+    static String buildPostDownloadVerificationFailureMessage(int failedEntries) {
+        return "Download completed, but post-download verification still failed for "
+                + failedEntries
+                + " file(s). Check the log panel for details.";
+    }
+
     static List<String> resolveDownloadCandidateUrls(ManifestEntry entry,
                                                      String primaryDownloadUrl,
                                                      String serverAddress,

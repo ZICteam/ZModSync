@@ -73,6 +73,10 @@ public final class PreJoinSyncManager {
                 }
 
                 DownloadManager.getInstance().startDownloads(plan.requiredEntries(), () -> {
+                    if (!verifyDownloadedEntries(serverData.ip, plan.requiredEntries())) {
+                        ServerSyncStatusCache.requestRefresh(serverData);
+                        return;
+                    }
                     SyncCleanupManager.saveManagedManifest(serverData.ip, manifest);
                     cacheCurrentState(serverData.ip);
                     ServerSyncStatusCache.requestRefresh(serverData);
@@ -102,6 +106,25 @@ public final class PreJoinSyncManager {
     private static void cacheCurrentState(String serverId) {
         List<ManifestEntry> currentEntries = ClientFileScanner.scanLocalFiles(serverId);
         ServerSyncStatusCache.cacheLocalEntries(serverId, currentEntries);
+    }
+
+    static boolean verifyDownloadedEntries(String serverId, List<ManifestEntry> requiredEntries) {
+        List<ManifestEntry> currentEntries = ClientFileScanner.scanLocalFiles(serverId);
+        List<ManifestEntry> mismatches = SyncComparator.findMissingOrOutdated(currentEntries, requiredEntries);
+        if (mismatches.isEmpty()) {
+            LoggerUtils.info("Post-download verification passed");
+            return true;
+        }
+
+        LoggerUtils.warn("Post-download verification failed for " + mismatches.size() + " file(s)");
+        for (ManifestEntry mismatch : mismatches) {
+            LoggerUtils.warn("Post-download mismatch: "
+                    + mismatch.getCategory().name()
+                    + " / "
+                    + mismatch.getRelativePath());
+        }
+        SyncIssueState.set(DownloadManager.buildPostDownloadVerificationFailureMessage(mismatches.size()));
+        return false;
     }
 
     static PreJoinSyncPlan buildSyncPlan(List<ManifestEntry> localEntries,

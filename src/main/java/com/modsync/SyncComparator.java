@@ -23,6 +23,20 @@ public final class SyncComparator {
                 .collect(Collectors.toList());
     }
 
+    public static List<ManifestEntry> findMissingOrOutdated(List<ManifestEntry> localEntries, List<ManifestEntry> requiredEntries) {
+        Map<String, ManifestEntry> localMap = new HashMap<>();
+        for (ManifestEntry entry : localEntries) {
+            if (isComparableEntry(entry)) {
+                localMap.put(entry.getIdentityKey(), entry);
+            }
+        }
+
+        return requiredEntries.stream()
+                .filter(SyncComparator::isComparableEntry)
+                .filter(serverEntry -> compare(serverEntry, localMap.get(serverEntry.getIdentityKey())).requiresDownload())
+                .collect(Collectors.toList());
+    }
+
     static ComparisonResult compare(ManifestEntry serverEntry, ManifestEntry clientEntry) {
         if (!isComparableEntry(serverEntry)) {
             return ComparisonResult.MATCHES;

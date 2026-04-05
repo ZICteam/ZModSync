@@ -142,6 +142,9 @@ public final class NetworkHandler {
         ensureProgressScreenVisible();
         DownloadManager.getInstance().startDownloads(plan.requiredEntries(),
                 () -> {
+                    if (!PreJoinSyncManager.verifyDownloadedEntries(serverId, plan.requiredEntries())) {
+                        return;
+                    }
                     if (plan.saveManagedManifest()) {
                         SyncCleanupManager.saveManagedManifest(serverId, manifestData);
                     }
