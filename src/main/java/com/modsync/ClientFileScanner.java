@@ -67,7 +67,8 @@ public final class ClientFileScanner {
                     fingerprint.sha256(),
                     true,
                     category.isDefaultRestartRequired(),
-                    ""
+                    "",
+                    fingerprint.sha1()
             );
         } catch (IOException exception) {
             throw new IllegalStateException("Unable to hash client file " + file, exception);

@@ -28,6 +28,7 @@ public final class ConfigManager {
     private static final ForgeConfigSpec.ConfigValue<String> OPTIONAL_CLIENT_TARGET;
     private static final ForgeConfigSpec.IntValue DOWNLOAD_THREADS;
     private static final ForgeConfigSpec.IntValue RETRY_COUNT;
+    private static final ForgeConfigSpec.BooleanValue ENABLE_MODRINTH_CDN_FALLBACK;
     private static final ForgeConfigSpec.IntValue HANDSHAKE_TIMEOUT_SECONDS;
     private static final ForgeConfigSpec.BooleanValue AUTO_KICK_ON_HANDSHAKE_TIMEOUT;
     private static final ForgeConfigSpec.BooleanValue VERIFY_HASH_AFTER_DOWNLOAD;
@@ -56,6 +57,7 @@ public final class ConfigManager {
 
         DOWNLOAD_THREADS = builder.defineInRange("download_threads", 4, 1, 16);
         RETRY_COUNT = builder.defineInRange("retry_count", 3, 0, 10);
+        ENABLE_MODRINTH_CDN_FALLBACK = builder.define("enable_modrinth_cdn_fallback", true);
         HANDSHAKE_TIMEOUT_SECONDS = builder.defineInRange("handshake_timeout_seconds", 120, 5, 600);
         AUTO_KICK_ON_HANDSHAKE_TIMEOUT = builder.define("auto_kick_on_handshake_timeout", false);
         VERIFY_HASH_AFTER_DOWNLOAD = builder.define("verify_hash_after_download", true);
@@ -131,6 +133,18 @@ public final class ConfigManager {
         return RETRY_COUNT.get();
     }
 
+    public static boolean enableModrinthCdnFallback() {
+        return ENABLE_MODRINTH_CDN_FALLBACK.get();
+    }
+
+    public static boolean enableModrinthCdnFallbackOrDefault() {
+        try {
+            return ENABLE_MODRINTH_CDN_FALLBACK.get();
+        } catch (IllegalStateException ignored) {
+            return false;
+        }
+    }
+
     public static int handshakeTimeoutSeconds() {
         return HANDSHAKE_TIMEOUT_SECONDS.get();
     }
@@ -188,6 +202,7 @@ public final class ConfigManager {
             OPTIONAL_CLIENT_TARGET.set(fileConfig.getOrElse("optional_client_target", OPTIONAL_CLIENT_TARGET.get()));
             DOWNLOAD_THREADS.set(fileConfig.getOrElse("download_threads", DOWNLOAD_THREADS.get()));
             RETRY_COUNT.set(fileConfig.getOrElse("retry_count", RETRY_COUNT.get()));
+            ENABLE_MODRINTH_CDN_FALLBACK.set(fileConfig.getOrElse("enable_modrinth_cdn_fallback", ENABLE_MODRINTH_CDN_FALLBACK.get()));
             HANDSHAKE_TIMEOUT_SECONDS.set(fileConfig.getOrElse("handshake_timeout_seconds", HANDSHAKE_TIMEOUT_SECONDS.get()));
             AUTO_KICK_ON_HANDSHAKE_TIMEOUT.set(fileConfig.getOrElse("auto_kick_on_handshake_timeout", AUTO_KICK_ON_HANDSHAKE_TIMEOUT.get()));
             VERIFY_HASH_AFTER_DOWNLOAD.set(fileConfig.getOrElse("verify_hash_after_download", VERIFY_HASH_AFTER_DOWNLOAD.get()));
@@ -227,6 +242,16 @@ public final class ConfigManager {
         try (CommentedFileConfig fileConfig = CommentedFileConfig.builder(path).sync().autosave().build()) {
             fileConfig.load();
             fileConfig.set("handshake_timeout_seconds", seconds);
+            fileConfig.save();
+        }
+    }
+
+    public static synchronized void setEnableModrinthCdnFallbackAndSave(boolean enabled) throws IOException {
+        ENABLE_MODRINTH_CDN_FALLBACK.set(enabled);
+        Path path = configPath();
+        try (CommentedFileConfig fileConfig = CommentedFileConfig.builder(path).sync().autosave().build()) {
+            fileConfig.load();
+            fileConfig.set("enable_modrinth_cdn_fallback", enabled);
             fileConfig.save();
         }
     }

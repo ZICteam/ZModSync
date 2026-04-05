@@ -95,4 +95,34 @@ class ManifestUrlResolverTest {
                 )
         );
     }
+
+    @Test
+    void resolveDownloadCandidateUrlsPrefersModrinthWhenResolverReturnsMatch() {
+        ManifestEntry entry = new ManifestEntry(
+                CategoryType.MOD,
+                "mods/example.jar",
+                "example.jar",
+                1L,
+                "abc",
+                true,
+                true,
+                "http://95.163.234.85:26590/files/mod/mods/example.jar",
+                "sha1abc"
+        );
+
+        assertEquals(
+                List.of(
+                        "https://cdn.modrinth.com/data/example/example.jar",
+                        "http://95.163.234.85:26590/files/mod/mods/example.jar",
+                        "http://127.0.0.1:26590/files/mod/mods/example.jar"
+                ),
+                DownloadManager.resolveDownloadCandidateUrls(
+                        entry,
+                        entry.getDownloadUrl(),
+                        "127.0.0.1:26683",
+                        26590,
+                        ignored -> "https://cdn.modrinth.com/data/example/example.jar"
+                )
+        );
+    }
 }

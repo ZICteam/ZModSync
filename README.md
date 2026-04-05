@@ -2,7 +2,9 @@
 
 SyncBridge is a universal Forge 1.20.1 mod that lets a server distribute mods and resource files to connecting clients while Minecraft is running.
 
-Current mod version: `1.0.94`
+Current mod version: `1.0.95`
+
+SyncBridge uses Modrinth as a CDN fallback for mods by default: when `enable_modrinth_cdn_fallback` is enabled, the client first checks Modrinth's version-file API for an exact `sha1` match and downloads from the returned CDN URL if found. If no exact match is available, SyncBridge falls back to the normal server-hosted file URL. Server owners can still disable this behavior and force server-only delivery.
 
 ## Requirements
 

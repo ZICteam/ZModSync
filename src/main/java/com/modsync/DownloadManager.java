@@ -10,7 +10,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -142,11 +144,12 @@ public final class DownloadManager {
                                       boolean deleteInvalidFiles,
                                       boolean useTempFiles) {
         Exception lastFailure = null;
-        List<String> candidateUrls = ManifestUrlResolver.buildDownloadCandidateUrls(
+        List<String> candidateUrls = resolveDownloadCandidateUrls(
                 task.getEntry(),
                 task.getEntry().getDownloadUrl(),
                 ClientSyncContext.getCurrentServerId(),
-                ClientSyncContext.getCurrentServerHttpPort()
+                ClientSyncContext.getCurrentServerHttpPort(),
+                ModrinthApiClient::resolveDownloadUrlIfEnabled
         );
         for (int i = 0; i <= retryCount; i++) {
             task.incrementAttempts();
@@ -217,6 +220,27 @@ public final class DownloadManager {
 
     static String buildSingleDownloadFailureMessage(String relativePath, Exception exception) {
         return "Failed to download " + relativePath + ": " + describeException(exception);
+    }
+
+    static List<String> resolveDownloadCandidateUrls(ManifestEntry entry,
+                                                     String primaryDownloadUrl,
+                                                     String serverAddress,
+                                                     int discoveredPort,
+                                                     Function<ManifestEntry, String> modrinthResolver) {
+        Set<String> urls = new LinkedHashSet<>();
+        if (modrinthResolver != null) {
+            String modrinthUrl = modrinthResolver.apply(entry);
+            if (modrinthUrl != null && !modrinthUrl.isBlank()) {
+                urls.add(modrinthUrl);
+            }
+        }
+        urls.addAll(ManifestUrlResolver.buildDownloadCandidateUrls(
+                entry,
+                primaryDownloadUrl,
+                serverAddress,
+                discoveredPort
+        ));
+        return new ArrayList<>(urls);
     }
 
     static String describeException(Exception exception) {

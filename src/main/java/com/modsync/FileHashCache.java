@@ -108,20 +108,23 @@ public final class FileHashCache {
                 cached = scopes
                         .getOrDefault(scopeKey, Map.of())
                         .get(relativePath);
-                if (cached != null && cached.size == size && cached.lastModified == lastModified) {
+                if (cached != null && cached.size == size && cached.lastModified == lastModified
+                        && cached.sha256 != null && !cached.sha256.isBlank()
+                        && cached.sha1 != null && !cached.sha1.isBlank()) {
                     seenPaths.add(relativePath);
-                    return new FileFingerprint(size, cached.sha256);
+                    return new FileFingerprint(size, cached.sha256, cached.sha1);
                 }
             }
 
             String sha256 = HashUtils.sha256(file);
+            String sha1 = HashUtils.sha1(file);
             synchronized (LOCK) {
                 scopes.computeIfAbsent(scopeKey, ignored -> new HashMap<>())
-                        .put(relativePath, new CacheEntry(size, lastModified, sha256));
+                        .put(relativePath, new CacheEntry(size, lastModified, sha256, sha1));
             }
             seenPaths.add(relativePath);
             changed = true;
-            return new FileFingerprint(size, sha256);
+            return new FileFingerprint(size, sha256, sha1);
         }
 
         @Override
@@ -168,14 +171,16 @@ public final class FileHashCache {
         private long size;
         private long lastModified;
         private String sha256;
+        private String sha1;
 
-        private CacheEntry(long size, long lastModified, String sha256) {
+        private CacheEntry(long size, long lastModified, String sha256, String sha1) {
             this.size = size;
             this.lastModified = lastModified;
             this.sha256 = sha256;
+            this.sha1 = sha1;
         }
     }
 
-    public record FileFingerprint(long size, String sha256) {
+    public record FileFingerprint(long size, String sha256, String sha1) {
     }
 }

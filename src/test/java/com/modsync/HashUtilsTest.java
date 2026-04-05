@@ -26,6 +26,17 @@ class HashUtilsTest {
     }
 
     @Test
+    void sha1MatchesKnownValueForTextFile() throws Exception {
+        Path file = tempDir.resolve("sample-sha1.txt");
+        Files.writeString(file, "abc");
+
+        assertEquals(
+                "a9993e364706816aba3e25717850c26c9cd0d89d",
+                HashUtils.sha1(file)
+        );
+    }
+
+    @Test
     void sha256MatchesKnownValueForEmptyFile() throws Exception {
         Path file = tempDir.resolve("empty.bin");
         Files.write(file, new byte[0]);

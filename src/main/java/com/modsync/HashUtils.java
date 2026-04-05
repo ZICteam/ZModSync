@@ -14,8 +14,16 @@ public final class HashUtils {
     }
 
     public static String sha256(Path path) throws IOException {
+        return digest(path, "SHA-256");
+    }
+
+    public static String sha1(Path path) throws IOException {
+        return digest(path, "SHA-1");
+    }
+
+    private static String digest(Path path, String algorithm) throws IOException {
         try (InputStream inputStream = Files.newInputStream(path)) {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            MessageDigest digest = MessageDigest.getInstance(algorithm);
             byte[] buffer = new byte[8192];
             int read;
             while ((read = inputStream.read(buffer)) != -1) {
@@ -23,7 +31,7 @@ public final class HashUtils {
             }
             return toHex(digest.digest());
         } catch (NoSuchAlgorithmException exception) {
-            throw new IllegalStateException("SHA-256 is not available", exception);
+            throw new IllegalStateException(algorithm + " is not available", exception);
         }
     }
 

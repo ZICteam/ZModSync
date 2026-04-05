@@ -7,6 +7,19 @@ The format is intentionally simple:
 - Every repository change must add a matching changelog entry.
 - Documentation must be updated in the same change whenever behavior, setup, or usage changes.
 
+## [1.0.96] - 2026-04-05
+
+### Changed
+- Enabled the Modrinth CDN fallback by default so mod downloads now try an exact `sha1` match on Modrinth before falling back to the normal server-hosted file URL.
+- Kept `enable_modrinth_cdn_fallback` as a separate config/runtime switch, so server owners can still disable the Modrinth lookup if they want server-only delivery.
+
+## [1.0.95] - 2026-04-05
+
+### Changed
+- Added an optional Modrinth CDN fallback for mod downloads: when enabled, SyncBridge now queries Modrinth's version-file API by exact `sha1` hash and prefers the matching CDN URL before falling back to the server-hosted file URL.
+- Expanded manifest and local file hashing metadata to carry `sha1` alongside the existing `sha256`, while keeping older manifests compatible.
+- Added config/runtime support for `enable_modrinth_cdn_fallback` and exposed the flag through `/modsync status` and `/modsync config set modrinth_cdn_fallback <true|false>`.
+
 ## [1.0.94] - 2026-03-30
 
 ### Changed

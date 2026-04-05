@@ -6,6 +6,7 @@ public class ManifestEntry {
     private String fileName;
     private long fileSize;
     private String sha256;
+    private String sha1;
     private boolean required;
     private boolean restartRequired;
     private String downloadUrl;
@@ -15,11 +16,17 @@ public class ManifestEntry {
 
     public ManifestEntry(CategoryType category, String relativePath, String fileName, long fileSize,
                          String sha256, boolean required, boolean restartRequired, String downloadUrl) {
+        this(category, relativePath, fileName, fileSize, sha256, required, restartRequired, downloadUrl, "");
+    }
+
+    public ManifestEntry(CategoryType category, String relativePath, String fileName, long fileSize,
+                         String sha256, boolean required, boolean restartRequired, String downloadUrl, String sha1) {
         this.category = category;
         this.relativePath = relativePath;
         this.fileName = fileName;
         this.fileSize = fileSize;
         this.sha256 = sha256;
+        this.sha1 = sha1;
         this.required = required;
         this.restartRequired = restartRequired;
         this.downloadUrl = downloadUrl;
@@ -65,6 +72,14 @@ public class ManifestEntry {
         this.sha256 = sha256;
     }
 
+    public String getSha1() {
+        return sha1;
+    }
+
+    public void setSha1(String sha1) {
+        this.sha1 = sha1;
+    }
+
     public boolean isRequired() {
         return required;
     }
@@ -94,6 +109,6 @@ public class ManifestEntry {
     }
 
     public ManifestEntry copy() {
-        return new ManifestEntry(category, relativePath, fileName, fileSize, sha256, required, restartRequired, downloadUrl);
+        return new ManifestEntry(category, relativePath, fileName, fileSize, sha256, required, restartRequired, downloadUrl, sha1);
     }
 }

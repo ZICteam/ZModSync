@@ -54,6 +54,12 @@ public final class ModSyncCommands {
                                                         context.getSource(),
                                                         IntegerArgumentType.getInteger(context, "seconds")
                                                 ))))
+                                .then(Commands.literal("modrinth_cdn_fallback")
+                                        .then(Commands.argument("enabled", StringArgumentType.word())
+                                                .executes(context -> setModrinthCdnFallback(
+                                                        context.getSource(),
+                                                        StringArgumentType.getString(context, "enabled")
+                                                ))))
                                 .then(Commands.literal("auto_kick_on_handshake_timeout")
                                         .then(Commands.argument("enabled", StringArgumentType.word())
                                                 .executes(context -> setAutoKickOnHandshakeTimeout(
@@ -108,6 +114,7 @@ public final class ModSyncCommands {
         source.sendSuccess(() -> Component.literal("  http_bind = " + ConfigManager.serverHttpBind()), false);
         source.sendSuccess(() -> Component.literal("  http_port = " + ConfigManager.serverHttpPort()), false);
         source.sendSuccess(() -> Component.literal("  public_http_base_url = " + (ConfigManager.publicHttpBaseUrl().isBlank() ? "<empty>" : ConfigManager.publicHttpBaseUrl())), false);
+        source.sendSuccess(() -> Component.literal("  enable_modrinth_cdn_fallback = " + ConfigManager.enableModrinthCdnFallback()), false);
         source.sendSuccess(() -> Component.literal("  handshake_timeout_seconds = " + ConfigManager.handshakeTimeoutSeconds()), false);
         source.sendSuccess(() -> Component.literal("  auto_kick_on_handshake_timeout = " + ConfigManager.autoKickOnHandshakeTimeout()), false);
         source.sendSuccess(() -> Component.literal("  manifest_entries = " + manifestEntries), false);
@@ -143,6 +150,26 @@ public final class ModSyncCommands {
             return 1;
         } catch (Exception exception) {
             source.sendFailure(Component.literal("Failed to set ModSync handshake_timeout_seconds: " + exception.getMessage()));
+            return 0;
+        }
+    }
+
+    private static int setModrinthCdnFallback(CommandSourceStack source, String enabledRaw) {
+        boolean enabled;
+        if ("true".equalsIgnoreCase(enabledRaw) || "false".equalsIgnoreCase(enabledRaw)) {
+            enabled = Boolean.parseBoolean(enabledRaw);
+        } else {
+            source.sendFailure(Component.literal("Value must be true or false."));
+            return 0;
+        }
+
+        try {
+            ConfigManager.setEnableModrinthCdnFallbackAndSave(enabled);
+            ModSync.reloadServerRuntime("command set enable_modrinth_cdn_fallback");
+            source.sendSuccess(() -> Component.literal("ModSync enable_modrinth_cdn_fallback set to " + enabled + "."), true);
+            return 1;
+        } catch (Exception exception) {
+            source.sendFailure(Component.literal("Failed to set ModSync enable_modrinth_cdn_fallback: " + exception.getMessage()));
             return 0;
         }
     }

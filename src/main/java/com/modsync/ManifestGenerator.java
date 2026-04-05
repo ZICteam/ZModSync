@@ -126,7 +126,8 @@ public final class ManifestGenerator {
                     fingerprint.sha256(),
                     true,
                     category.isDefaultRestartRequired(),
-                    ""
+                    "",
+                    fingerprint.sha1()
             );
         } catch (IOException exception) {
             throw new IllegalStateException("Unable to build manifest entry for " + file, exception);
