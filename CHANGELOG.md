@@ -7,6 +7,11 @@ The format is intentionally simple:
 - Every repository change must add a matching changelog entry.
 - Documentation must be updated in the same change whenever behavior, setup, or usage changes.
 
+## [1.0.97] - 2026-04-05
+
+### Fixed
+- Shut down the embedded ModSync HTTP file server executor during server stop/reload so worker threads do not linger and trigger stuck-thread warnings while the server is closing.
+
 ## [1.0.96] - 2026-04-05
 
 ### Changed

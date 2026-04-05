@@ -2,10 +2,16 @@ package com.modsync;
 
 import org.junit.jupiter.api.Test;
 
+import java.lang.reflect.Field;
+import java.net.InetSocketAddress;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.Map;
+import com.sun.net.httpserver.HttpServer;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class HttpFileServerTest {
@@ -53,5 +59,27 @@ class HttpFileServerTest {
     void resolveApprovedEntryRejectsMalformedFilePathWithoutCategorySeparator() {
         assertThrows(IllegalArgumentException.class,
                 () -> HttpFileServer.resolveApprovedEntry("/files/mods-only", Map.of()));
+    }
+
+    @Test
+    void stopShutsDownHttpExecutor() throws Exception {
+        HttpFileServer instance = HttpFileServer.getInstance();
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+        HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        server.start();
+
+        Field serverField = HttpFileServer.class.getDeclaredField("server");
+        serverField.setAccessible(true);
+        Field executorField = HttpFileServer.class.getDeclaredField("executorService");
+        executorField.setAccessible(true);
+
+        serverField.set(instance, server);
+        executorField.set(instance, executor);
+
+        instance.stop();
+
+        assertTrue(executor.isShutdown());
+        assertNull(serverField.get(instance));
+        assertNull(executorField.get(instance));
     }
 }

@@ -11,6 +11,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public final class HttpFileServer {
@@ -18,6 +19,7 @@ public final class HttpFileServer {
 
     private final Map<String, ManifestEntry> approvedEntries = new ConcurrentHashMap<>();
     private HttpServer server;
+    private ExecutorService executorService;
 
     private HttpFileServer() {
     }
@@ -35,10 +37,13 @@ public final class HttpFileServer {
             server = HttpServer.create(new InetSocketAddress(ConfigManager.serverHttpBind(), ConfigManager.serverHttpPort()), 0);
             server.createContext("/manifest", new ManifestHandler());
             server.createContext("/files", new FileHandler());
-            server.setExecutor(Executors.newFixedThreadPool(Math.max(2, ConfigManager.downloadThreads())));
+            executorService = Executors.newFixedThreadPool(Math.max(2, ConfigManager.downloadThreads()));
+            server.setExecutor(executorService);
             server.start();
             LoggerUtils.info("HTTP file server started on " + ConfigManager.serverHttpBind() + ":" + ConfigManager.serverHttpPort());
         } catch (IOException exception) {
+            shutdownExecutor();
+            server = null;
             LoggerUtils.error("Failed to start HTTP file server", exception);
         }
     }
@@ -47,7 +52,15 @@ public final class HttpFileServer {
         if (server != null) {
             server.stop(0);
             server = null;
+            shutdownExecutor();
             LoggerUtils.info("HTTP file server stopped");
+        }
+    }
+
+    private void shutdownExecutor() {
+        if (executorService != null) {
+            executorService.shutdownNow();
+            executorService = null;
         }
     }
 
