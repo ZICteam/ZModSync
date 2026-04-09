@@ -50,6 +50,16 @@ class FileUtilsTest {
     }
 
     @Test
+    void isSkippedFileKeepsTxtFilesForConfigCategory() {
+        assertFalse(FileUtils.isSkippedFile(CategoryType.CONFIG, Path.of("/tmp/fancymenu/options.txt"), Set.of(".txt", ".log")));
+    }
+
+    @Test
+    void isSkippedFileStillSkipsTxtFilesOutsideConfigCategory() {
+        assertTrue(FileUtils.isSkippedFile(CategoryType.MOD, Path.of("/tmp/readme.txt"), Set.of(".txt", ".log")));
+    }
+
+    @Test
     void isProtectedModFileNameMatchesCaseInsensitively() {
         assertTrue(FileUtils.isProtectedModFileName("ModSync-1.0.31.jar"));
     }

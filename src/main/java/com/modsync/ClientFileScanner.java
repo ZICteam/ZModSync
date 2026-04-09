@@ -46,7 +46,7 @@ public final class ClientFileScanner {
             try (FileHashCache.ScopeSession hashCache = FileHashCache.openClientScope(serverId, category)) {
                 Files.walk(root)
                         .filter(Files::isRegularFile)
-                        .filter(file -> !FileUtils.isSkippedFile(file, skippedExtensions))
+                        .filter(file -> !FileUtils.isSkippedFile(category, file, skippedExtensions))
                         .forEach(file -> entries.add(toEntry(category, root, file, hashCache)));
             } catch (IOException exception) {
                 LoggerUtils.error("Failed to scan client files for " + category, exception);

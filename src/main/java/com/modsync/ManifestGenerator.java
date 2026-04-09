@@ -52,7 +52,7 @@ public final class ManifestGenerator {
                 Files.walk(root)
                         .filter(Files::isRegularFile)
                         .filter(path -> shouldIncludeInManifest(category, path))
-                        .filter(path -> !FileUtils.isSkippedFile(path, skippedExtensions))
+                        .filter(path -> !FileUtils.isSkippedFile(category, path, skippedExtensions))
                         .forEach(path -> entries.add(createEntry(category, root, path, hashCache)));
             } catch (IOException exception) {
                 LoggerUtils.error("Failed generating manifest for " + category, exception);

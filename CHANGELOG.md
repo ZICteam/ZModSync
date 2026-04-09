@@ -7,6 +7,12 @@ The format is intentionally simple:
 - Every repository change must add a matching changelog entry.
 - Documentation must be updated in the same change whenever behavior, setup, or usage changes.
 
+## [1.0.99] - 2026-04-09
+
+### Changed
+- Allowed `.txt` files inside the `CONFIG` category to participate in manifest generation and client verification, so text-based config files such as FancyMenu layouts no longer disappear from SyncBridge manifests.
+- Kept the global skip-extension filter for the other categories, so `.txt` files outside `CONFIG` are still ignored by default.
+
 ## [1.0.98] - 2026-04-06
 
 ### Changed

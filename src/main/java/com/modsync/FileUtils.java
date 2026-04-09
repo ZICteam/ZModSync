@@ -92,9 +92,17 @@ public final class FileUtils {
     }
 
     public static boolean isSkippedFile(Path file, Set<String> skippedExtensions) {
+        return isSkippedFile(null, file, skippedExtensions);
+    }
+
+    public static boolean isSkippedFile(CategoryType category, Path file, Set<String> skippedExtensions) {
         String fileName = file.getFileName().toString().toLowerCase(Locale.ROOT);
         for (String extension : skippedExtensions) {
-            if (fileName.endsWith(extension.toLowerCase(Locale.ROOT))) {
+            String normalizedExtension = extension.toLowerCase(Locale.ROOT);
+            if (category == CategoryType.CONFIG && ".txt".equals(normalizedExtension)) {
+                continue;
+            }
+            if (fileName.endsWith(normalizedExtension)) {
                 return true;
             }
         }
